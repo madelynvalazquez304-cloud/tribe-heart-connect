@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,21 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, isAdmin, isCreator } = useAuth();
+  const { signIn, user, isAdmin, isCreator, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      if (isAdmin) {
+        navigate('/admin');
+      } else if (isCreator) {
+        navigate('/dashboard');
+      } else {
+        navigate('/account');
+      }
+    }
+  }, [user, isAdmin, isCreator, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,17 +41,7 @@ const Login = () => {
     }
 
     toast.success('Welcome back!');
-    
-    // Redirect based on role after a short delay to allow roles to load
-    setTimeout(() => {
-      if (isAdmin) {
-        navigate('/admin');
-      } else if (isCreator) {
-        navigate('/dashboard');
-      } else {
-        navigate('/');
-      }
-    }, 500);
+    // Navigation will happen via useEffect when auth state updates
   };
 
   return (
