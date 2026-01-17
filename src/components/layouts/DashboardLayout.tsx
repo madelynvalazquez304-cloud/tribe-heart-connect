@@ -68,6 +68,7 @@ const creatorNavItems: NavItem[] = [
   { label: 'Links', href: '/dashboard/links', icon: LinkIcon },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { label: 'Customize', href: '/dashboard/customize', icon: Palette },
+  { label: 'Domain', href: '/dashboard/domain', icon: Users },
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 

@@ -10,10 +10,11 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import BecomeCreator from "./pages/BecomeCreator";
+import Explore from "./pages/Explore";
 import CreatorPage from "./pages/CreatorPage";
 import NotFound from "./pages/NotFound";
 import VotingPage from "./pages/VotingPage";
+import UserDashboard from "./pages/UserDashboard";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -33,6 +34,10 @@ import CreatorWithdrawals from "./pages/creator/CreatorWithdrawals";
 import CreatorLinks from "./pages/creator/CreatorLinks";
 import CreatorCustomize from "./pages/creator/CreatorCustomize";
 import CreatorSettings from "./pages/creator/CreatorSettings";
+import CreatorEvents from "./pages/creator/CreatorEvents";
+import CreatorMerchandise from "./pages/creator/CreatorMerchandise";
+import CreatorDomain from "./pages/creator/CreatorDomain";
+import CreatorAnalytics from "./pages/creator/CreatorAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -48,11 +53,14 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/explore" element={<Explore />} />
             <Route path="/vote" element={<VotingPage />} />
             <Route path="/vote/:slug" element={<VotingPage />} />
-            <Route path="/become-creator" element={
+
+            {/* User Account */}
+            <Route path="/account" element={
               <ProtectedRoute>
-                <BecomeCreator />
+                <UserDashboard />
               </ProtectedRoute>
             } />
 
@@ -119,14 +127,34 @@ const App = () => (
                 <CreatorWithdrawals />
               </ProtectedRoute>
             } />
+            <Route path="/dashboard/events" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorEvents />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/merchandise" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorMerchandise />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard/links" element={
               <ProtectedRoute requiredRole="creator">
                 <CreatorLinks />
               </ProtectedRoute>
             } />
+            <Route path="/dashboard/analytics" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorAnalytics />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard/customize" element={
               <ProtectedRoute requiredRole="creator">
                 <CreatorCustomize />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/domain" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorDomain />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/settings" element={

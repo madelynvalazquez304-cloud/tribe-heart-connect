@@ -1,10 +1,32 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Heart, Menu, X } from "lucide-react";
+import { Heart, Menu, X, User, LogOut, LayoutDashboard, Shield, Settings } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, isAdmin, isCreator, signOut, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  const getDashboardLink = () => {
+    if (isAdmin) return '/admin';
+    if (isCreator) return '/dashboard';
+    return '/account';
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
@@ -25,22 +47,62 @@ const Header = () => {
             <Link to="/explore" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
               Explore Creators
             </Link>
-            <Link to="/how-it-works" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
-              How It Works
-            </Link>
-            <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
-              For Creators
+            <Link to="/vote" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+              Awards
             </Link>
           </nav>
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" asChild>
-              <Link to="/login">Log In</Link>
-            </Button>
-            <Button variant="hero" asChild>
-              <Link to="/signup">Start Your Tribe</Link>
-            </Button>
+            {!isLoading && user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="gap-2">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src="" />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                        {user.email?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="max-w-[120px] truncate">{user.email}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <Shield className="w-4 h-4 mr-2" />
+                      Admin Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  {isCreator && (
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Creator Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  {!isAdmin && !isCreator && (
+                    <DropdownMenuItem onClick={() => navigate('/account')}>
+                      <User className="w-4 h-4 mr-2" />
+                      My Account
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link to="/login">Log In</Link>
+                </Button>
+                <Button variant="hero" asChild>
+                  <Link to="/signup">Start Your Tribe</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -68,26 +130,34 @@ const Header = () => {
                 Explore Creators
               </Link>
               <Link
-                to="/how-it-works"
+                to="/vote"
                 className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
-                How It Works
-              </Link>
-              <Link
-                to="/pricing"
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                For Creators
+                Awards
               </Link>
               <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
-                <Button variant="outline" asChild>
-                  <Link to="/login">Log In</Link>
-                </Button>
-                <Button variant="hero" asChild>
-                  <Link to="/signup">Start Your Tribe</Link>
-                </Button>
+                {!isLoading && user ? (
+                  <>
+                    <Button variant="outline" asChild>
+                      <Link to={getDashboardLink()} onClick={() => setIsMenuOpen(false)}>
+                        {isAdmin ? 'Admin Dashboard' : isCreator ? 'Creator Dashboard' : 'My Account'}
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" onClick={() => { handleSignOut(); setIsMenuOpen(false); }}>
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" asChild>
+                      <Link to="/login" onClick={() => setIsMenuOpen(false)}>Log In</Link>
+                    </Button>
+                    <Button variant="hero" asChild>
+                      <Link to="/signup" onClick={() => setIsMenuOpen(false)}>Start Your Tribe</Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </nav>
           </div>
