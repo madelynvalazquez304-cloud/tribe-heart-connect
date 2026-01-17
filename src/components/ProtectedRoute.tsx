@@ -27,12 +27,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Check for admin access
   if (requiredRole === 'admin' && !isAdmin) {
-    return <Navigate to="/" replace />;
+    // Non-admins get redirected to their appropriate dashboard
+    if (isCreator) {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return <Navigate to="/account" replace />;
   }
 
+  // Check for creator access
   if (requiredRole === 'creator' && !isCreator && !isAdmin) {
-    return <Navigate to="/become-creator" replace />;
+    // Non-creators go to account where they can request creator status
+    return <Navigate to="/account" replace />;
   }
 
   return <>{children}</>;

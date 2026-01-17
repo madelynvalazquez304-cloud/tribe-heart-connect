@@ -24,7 +24,8 @@ import {
   Shield,
   Palette,
   Wallet,
-  FolderKanban
+  FolderKanban,
+  Globe
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -68,7 +69,7 @@ const creatorNavItems: NavItem[] = [
   { label: 'Links', href: '/dashboard/links', icon: LinkIcon },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { label: 'Customize', href: '/dashboard/customize', icon: Palette },
-  { label: 'Domain', href: '/dashboard/domain', icon: Users },
+  { label: 'Domain', href: '/dashboard/domain', icon: Globe },
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
