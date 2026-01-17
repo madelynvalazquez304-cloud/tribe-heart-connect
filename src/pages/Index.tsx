@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Heart, Users, ShoppingBag, Ticket, ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import heroImage from "@/assets/hero-image.jpg";
 import creator1 from "@/assets/creator-1.jpg";
 import creator2 from "@/assets/creator-2.jpg";
@@ -318,12 +320,14 @@ const CTASection = () => (
 const Index = () => {
   return (
     <>
+      <Header />
       <HeroSection />
       <FeaturesSection />
       <CreatorsShowcase />
       <HowItWorks />
       <TrustSection />
       <CTASection />
+      <Footer />
     </>
   );
 };

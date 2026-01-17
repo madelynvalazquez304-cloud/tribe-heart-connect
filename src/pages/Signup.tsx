@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,21 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signUp } = useAuth();
+  const { signUp, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (isAdmin) {
+        navigate('/admin');
+      } else if (isCreator) {
+        navigate('/dashboard');
+      } else {
+        navigate('/account');
+      }
+    }
+  }, [user, isAdmin, isCreator, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +53,8 @@ const Signup = () => {
       return;
     }
 
-    toast.success('Account created! You can now sign in.');
-    navigate('/login');
+    toast.success('Account created successfully! Welcome to TribeYangu.');
+    // Auto-redirect will happen when auth state updates
   };
 
   return (
