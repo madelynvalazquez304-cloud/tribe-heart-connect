@@ -12,12 +12,12 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, user, isAdmin, isCreator, loading } = useAuth();
+  const { signIn, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (!loading && user) {
+    if (!authLoading && user) {
       if (isAdmin) {
         navigate('/admin');
       } else if (isCreator) {
@@ -26,7 +26,7 @@ const Login = () => {
         navigate('/account');
       }
     }
-  }, [user, isAdmin, isCreator, loading, navigate]);
+  }, [user, isAdmin, isCreator, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
