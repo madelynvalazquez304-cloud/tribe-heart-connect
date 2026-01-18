@@ -38,6 +38,12 @@ import CreatorEvents from "./pages/creator/CreatorEvents";
 import CreatorMerchandise from "./pages/creator/CreatorMerchandise";
 import CreatorDomain from "./pages/creator/CreatorDomain";
 import CreatorAnalytics from "./pages/creator/CreatorAnalytics";
+import CreatorCampaigns from "./pages/creator/CreatorCampaigns";
+
+// Additional Admin Pages
+import AdminMerchandise from "./pages/admin/AdminMerchandise";
+import AdminEvents from "./pages/admin/AdminEvents";
+import AdminCampaigns from "./pages/admin/AdminCampaigns";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +116,21 @@ const App = () => (
                 <AdminSettings />
               </ProtectedRoute>
             } />
+            <Route path="/admin/merchandise" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminMerchandise />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/events" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminEvents />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/campaigns" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminCampaigns />
+              </ProtectedRoute>
+            } />
 
             {/* Creator Routes */}
             <Route path="/dashboard" element={
@@ -160,6 +181,11 @@ const App = () => (
             <Route path="/dashboard/settings" element={
               <ProtectedRoute requiredRole="creator">
                 <CreatorSettings />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/campaigns" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorCampaigns />
               </ProtectedRoute>
             } />
 
