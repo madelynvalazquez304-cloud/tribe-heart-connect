@@ -137,6 +137,124 @@ export type Database = {
           },
         ]
       }
+      campaign_contributions: {
+        Row: {
+          amount: number
+          campaign_id: string
+          created_at: string
+          donor_email: string | null
+          donor_name: string | null
+          donor_phone: string | null
+          id: string
+          is_anonymous: boolean | null
+          message: string | null
+          mpesa_receipt: string | null
+          payment_provider: string | null
+          payment_reference: string | null
+          status: string | null
+        }
+        Insert: {
+          amount: number
+          campaign_id: string
+          created_at?: string
+          donor_email?: string | null
+          donor_name?: string | null
+          donor_phone?: string | null
+          id?: string
+          is_anonymous?: boolean | null
+          message?: string | null
+          mpesa_receipt?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string
+          created_at?: string
+          donor_email?: string | null
+          donor_name?: string | null
+          donor_phone?: string | null
+          id?: string
+          is_anonymous?: boolean | null
+          message?: string | null
+          mpesa_receipt?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_contributions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          banner_url: string | null
+          created_at: string
+          creator_id: string
+          currency: string | null
+          current_amount: number | null
+          description: string | null
+          end_date: string | null
+          goal_amount: number
+          id: string
+          is_featured: boolean | null
+          start_date: string | null
+          status: string | null
+          supporter_count: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          banner_url?: string | null
+          created_at?: string
+          creator_id: string
+          currency?: string | null
+          current_amount?: number | null
+          description?: string | null
+          end_date?: string | null
+          goal_amount: number
+          id?: string
+          is_featured?: boolean | null
+          start_date?: string | null
+          status?: string | null
+          supporter_count?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          banner_url?: string | null
+          created_at?: string
+          creator_id?: string
+          currency?: string | null
+          current_amount?: number | null
+          description?: string | null
+          end_date?: string | null
+          goal_amount?: number
+          id?: string
+          is_featured?: boolean | null
+          start_date?: string | null
+          status?: string | null
+          supporter_count?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creator_categories: {
         Row: {
           created_at: string
