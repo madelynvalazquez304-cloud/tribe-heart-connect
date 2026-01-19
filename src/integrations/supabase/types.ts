@@ -348,10 +348,14 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          is_partner: boolean | null
           is_verified: boolean | null
           kyc_verified: boolean | null
           mpesa_phone: string | null
           paypal_email: string | null
+          referral_code: string | null
+          referral_tier: number | null
+          referred_by: string | null
           rejection_reason: string | null
           status: Database["public"]["Enums"]["creator_status"]
           suspension_reason: string | null
@@ -359,6 +363,7 @@ export type Database = {
           theme_primary: string | null
           theme_secondary: string | null
           total_raised: number | null
+          total_referral_earnings: number | null
           total_supporters: number | null
           total_votes: number | null
           tribe_name: string | null
@@ -375,10 +380,14 @@ export type Database = {
           created_at?: string
           display_name: string
           id?: string
+          is_partner?: boolean | null
           is_verified?: boolean | null
           kyc_verified?: boolean | null
           mpesa_phone?: string | null
           paypal_email?: string | null
+          referral_code?: string | null
+          referral_tier?: number | null
+          referred_by?: string | null
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["creator_status"]
           suspension_reason?: string | null
@@ -386,6 +395,7 @@ export type Database = {
           theme_primary?: string | null
           theme_secondary?: string | null
           total_raised?: number | null
+          total_referral_earnings?: number | null
           total_supporters?: number | null
           total_votes?: number | null
           tribe_name?: string | null
@@ -402,10 +412,14 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          is_partner?: boolean | null
           is_verified?: boolean | null
           kyc_verified?: boolean | null
           mpesa_phone?: string | null
           paypal_email?: string | null
+          referral_code?: string | null
+          referral_tier?: number | null
+          referred_by?: string | null
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["creator_status"]
           suspension_reason?: string | null
@@ -413,6 +427,7 @@ export type Database = {
           theme_primary?: string | null
           theme_secondary?: string | null
           total_raised?: number | null
+          total_referral_earnings?: number | null
           total_supporters?: number | null
           total_votes?: number | null
           tribe_name?: string | null
@@ -426,6 +441,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "creator_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creators_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "creators"
             referencedColumns: ["id"]
           },
         ]
@@ -559,6 +581,111 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_types: {
+        Row: {
+          animation_url: string | null
+          created_at: string
+          display_order: number | null
+          icon: string
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+        }
+        Insert: {
+          animation_url?: string | null
+          created_at?: string
+          display_order?: number | null
+          icon: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price: number
+        }
+        Update: {
+          animation_url?: string | null
+          created_at?: string
+          display_order?: number | null
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      gifts: {
+        Row: {
+          created_at: string
+          creator_amount: number
+          creator_id: string
+          gift_type_id: string
+          id: string
+          message: string | null
+          mpesa_receipt: string | null
+          payment_provider: string | null
+          payment_reference: string | null
+          platform_fee: number | null
+          quantity: number | null
+          sender_email: string | null
+          sender_name: string | null
+          sender_phone: string | null
+          status: string | null
+          total_amount: number
+        }
+        Insert: {
+          created_at?: string
+          creator_amount: number
+          creator_id: string
+          gift_type_id: string
+          id?: string
+          message?: string | null
+          mpesa_receipt?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
+          platform_fee?: number | null
+          quantity?: number | null
+          sender_email?: string | null
+          sender_name?: string | null
+          sender_phone?: string | null
+          status?: string | null
+          total_amount: number
+        }
+        Update: {
+          created_at?: string
+          creator_amount?: number
+          creator_id?: string
+          gift_type_id?: string
+          id?: string
+          message?: string | null
+          mpesa_receipt?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
+          platform_fee?: number | null
+          quantity?: number | null
+          sender_email?: string | null
+          sender_name?: string | null
+          sender_phone?: string | null
+          status?: string | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gifts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gifts_gift_type_id_fkey"
+            columns: ["gift_type_id"]
+            isOneToOne: false
+            referencedRelation: "gift_types"
             referencedColumns: ["id"]
           },
         ]
@@ -888,6 +1015,103 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      referral_earnings: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          level: number
+          percentage: number
+          referrer_id: string
+          source_creator_id: string
+          status: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          level: number
+          percentage: number
+          referrer_id: string
+          source_creator_id: string
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          level?: number
+          percentage?: number
+          referrer_id?: string
+          source_creator_id?: string
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_earnings_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_earnings_source_creator_id_fkey"
+            columns: ["source_creator_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_earnings_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          level: number
+          referred_id: string
+          referrer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: number
+          referred_id: string
+          referrer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: number
+          referred_id?: string
+          referrer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_types: {
         Row: {
