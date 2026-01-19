@@ -25,7 +25,10 @@ import {
   Palette,
   Wallet,
   FolderKanban,
-  Globe
+  Globe,
+  Gift,
+  Megaphone,
+  Handshake
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -55,6 +58,11 @@ const adminNavItems: NavItem[] = [
   { label: 'Donations', href: '/admin/donations', icon: Heart },
   { label: 'Withdrawals', href: '/admin/withdrawals', icon: Wallet },
   { label: 'Transactions', href: '/admin/transactions', icon: DollarSign },
+  { label: 'Campaigns', href: '/admin/campaigns', icon: Megaphone },
+  { label: 'Merchandise', href: '/admin/merchandise', icon: ShoppingBag },
+  { label: 'Events', href: '/admin/events', icon: Ticket },
+  { label: 'Gifts', href: '/admin/gifts', icon: Gift },
+  { label: 'Partners', href: '/admin/partners', icon: Handshake },
   { label: 'Awards & Voting', href: '/admin/awards', icon: Trophy },
   { label: 'Payment Config', href: '/admin/payments', icon: CreditCard },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
@@ -63,9 +71,12 @@ const adminNavItems: NavItem[] = [
 const creatorNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Donations', href: '/dashboard/donations', icon: Heart },
-  { label: 'Withdrawals', href: '/dashboard/withdrawals', icon: Wallet },
-  { label: 'Events', href: '/dashboard/events', icon: Ticket },
+  { label: 'Gifts', href: '/dashboard/gifts', icon: Gift },
+  { label: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
   { label: 'Merchandise', href: '/dashboard/merchandise', icon: ShoppingBag },
+  { label: 'Events', href: '/dashboard/events', icon: Ticket },
+  { label: 'Withdrawals', href: '/dashboard/withdrawals', icon: Wallet },
+  { label: 'Partners', href: '/dashboard/partners', icon: Handshake },
   { label: 'Links', href: '/dashboard/links', icon: LinkIcon },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { label: 'Customize', href: '/dashboard/customize', icon: Palette },

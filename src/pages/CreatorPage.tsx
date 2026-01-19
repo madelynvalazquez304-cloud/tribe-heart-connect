@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Heart, Users, Share2, Check, ExternalLink, Loader2, Phone, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Heart, Users, Share2, Check, ExternalLink, Loader2, Phone, AlertCircle, CheckCircle2, XCircle, Gift } from 'lucide-react';
+import GiftingPanel from '@/components/GiftingPanel';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import NotFound from './NotFound';
@@ -340,8 +341,15 @@ const CreatorPage = () => {
               )}
             </div>
 
-            {/* Donation Sidebar */}
-            <div className="lg:col-span-1">
+            {/* Donation & Gifting Sidebar */}
+            <div className="lg:col-span-1 space-y-4">
+              {/* Gifting Panel */}
+              <GiftingPanel 
+                creatorId={creator.id} 
+                creatorName={creator.display_name}
+                themeColor={creator.theme_primary || '#E07B4C'}
+              />
+              
               <div className="sticky top-24">
                 <Card className="shadow-lg overflow-hidden">
                   <div className="h-2" style={{ backgroundColor: creator.theme_primary }} />

@@ -39,11 +39,15 @@ import CreatorMerchandise from "./pages/creator/CreatorMerchandise";
 import CreatorDomain from "./pages/creator/CreatorDomain";
 import CreatorAnalytics from "./pages/creator/CreatorAnalytics";
 import CreatorCampaigns from "./pages/creator/CreatorCampaigns";
+import CreatorGifts from "./pages/creator/CreatorGifts";
+import CreatorPartners from "./pages/creator/CreatorPartners";
 
 // Additional Admin Pages
 import AdminMerchandise from "./pages/admin/AdminMerchandise";
 import AdminEvents from "./pages/admin/AdminEvents";
 import AdminCampaigns from "./pages/admin/AdminCampaigns";
+import AdminGifts from "./pages/admin/AdminGifts";
+import AdminPartners from "./pages/admin/AdminPartners";
 
 const queryClient = new QueryClient();
 
@@ -131,6 +135,16 @@ const App = () => (
                 <AdminCampaigns />
               </ProtectedRoute>
             } />
+            <Route path="/admin/gifts" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminGifts />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/partners" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminPartners />
+              </ProtectedRoute>
+            } />
 
             {/* Creator Routes */}
             <Route path="/dashboard" element={
@@ -186,6 +200,16 @@ const App = () => (
             <Route path="/dashboard/campaigns" element={
               <ProtectedRoute requiredRole="creator">
                 <CreatorCampaigns />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/gifts" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorGifts />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/partners" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorPartners />
               </ProtectedRoute>
             } />
 
