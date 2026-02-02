@@ -10,6 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Heart, Users, Share2, Check, ExternalLink, Loader2, Phone, AlertCircle, CheckCircle2, XCircle, Gift } from 'lucide-react';
 import GiftingPanel from '@/components/GiftingPanel';
+import GiftAnimationOverlay from '@/components/GiftAnimationOverlay';
+import ProfileLoadingSpinner from '@/components/ProfileLoadingSpinner';
+import CampaignSection from '@/components/CampaignSection';
+import MerchandiseStore from '@/components/MerchandiseStore';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import NotFound from './NotFound';
@@ -192,8 +196,8 @@ const CreatorPage = () => {
     return (
       <>
         <Header />
-        <div className="min-h-screen flex items-center justify-center pt-20">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="min-h-screen pt-20">
+          <ProfileLoadingSpinner color={undefined} />
         </div>
         <Footer />
       </>
@@ -214,6 +218,7 @@ const CreatorPage = () => {
   return (
     <div style={themeStyles}>
       <Header />
+      <GiftAnimationOverlay creatorId={creator.id} />
       <main className="min-h-screen pt-16">
         {/* Banner */}
         <div className="relative h-48 md:h-64 overflow-hidden">
@@ -346,6 +351,20 @@ const CreatorPage = () => {
               {/* Gifting Panel */}
               <GiftingPanel 
                 creatorId={creator.id} 
+                creatorName={creator.display_name}
+                themeColor={creator.theme_primary || '#E07B4C'}
+              />
+
+              {/* Campaigns */}
+              <CampaignSection 
+                creatorId={creator.id}
+                creatorName={creator.display_name}
+                themeColor={creator.theme_primary || '#E07B4C'}
+              />
+
+              {/* Merchandise Store */}
+              <MerchandiseStore 
+                creatorId={creator.id}
                 creatorName={creator.display_name}
                 themeColor={creator.theme_primary || '#E07B4C'}
               />

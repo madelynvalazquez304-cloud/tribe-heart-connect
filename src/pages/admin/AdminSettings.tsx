@@ -246,6 +246,54 @@ const AdminSettings = () => {
             </CardContent>
           </Card>
 
+          {/* Partner Referral Percentages */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-primary" />
+                Partner Referral Commissions
+              </CardTitle>
+              <CardDescription>Set commission percentages for each referral tier</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="referral_level_1">Level 1 (Direct) %</Label>
+                  <Input
+                    id="referral_level_1"
+                    type="number"
+                    step="0.5"
+                    value={settings.referral_level_1_percent || 5}
+                    onChange={(e) => handleChange('referral_level_1_percent', parseFloat(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">Direct referrals</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="referral_level_2">Level 2 (Indirect) %</Label>
+                  <Input
+                    id="referral_level_2"
+                    type="number"
+                    step="0.5"
+                    value={settings.referral_level_2_percent || 2.5}
+                    onChange={(e) => handleChange('referral_level_2_percent', parseFloat(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">Their referrals</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="referral_level_3">Level 3 %</Label>
+                  <Input
+                    id="referral_level_3"
+                    type="number"
+                    step="0.5"
+                    value={settings.referral_level_3_percent || 1}
+                    onChange={(e) => handleChange('referral_level_3_percent', parseFloat(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">Third tier referrals</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Info */}
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-6">
