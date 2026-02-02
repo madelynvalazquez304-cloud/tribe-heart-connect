@@ -1426,6 +1426,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_unique_referral_code: { Args: never; Returns: string }
       get_creator_balance: { Args: { _creator_id: string }; Returns: number }
       get_creator_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
