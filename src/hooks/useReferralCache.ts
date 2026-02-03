@@ -62,7 +62,8 @@ export const useReferralCache = (): UseReferralCacheResult => {
   }, []);
 
   const generateReferralLink = useCallback((code: string) => {
-    return `${getBaseUrl()}/become-creator?ref=${code}`;
+    // Redirect to signup page with ref parameter
+    return `${getBaseUrl()}/signup?ref=${code}`;
   }, [getBaseUrl]);
 
   return {

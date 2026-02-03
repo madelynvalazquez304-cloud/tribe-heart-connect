@@ -18,10 +18,25 @@ serve(async (req) => {
 
     const { recordId, type } = await req.json();
 
-    const table = type === 'donation' ? 'donations' : 'votes';
+    const tableMap: Record<string, string> = {
+      donation: 'donations',
+      vote: 'votes',
+      gift: 'gifts',
+      campaign: 'campaign_contributions',
+      merchandise: 'orders'
+    };
+    
+    const table = tableMap[type];
+    if (!table) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid payment type' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const { data, error } = await supabase
       .from(table)
-      .select('status, mpesa_receipt')
+      .select('status, mpesa_receipt, payment_reference')
       .eq('id', recordId)
       .single();
 
@@ -30,7 +45,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         status: data.status,
-        receipt: data.mpesa_receipt
+        receipt: data.mpesa_receipt || data.payment_reference
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

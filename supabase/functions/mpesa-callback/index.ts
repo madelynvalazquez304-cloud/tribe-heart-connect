@@ -19,35 +19,27 @@ serve(async (req) => {
 
     console.log('M-PESA Callback:', { CheckoutRequestID, ResultCode, ResultDesc });
 
-    // Find the record by CheckoutRequestID
+    // Find the record by CheckoutRequestID in all possible tables
+    type TableType = 'donations' | 'votes' | 'gifts' | 'campaign_contributions' | 'orders';
+    const tables: TableType[] = ['donations', 'votes', 'gifts', 'campaign_contributions', 'orders'];
     let record: any = null;
-    let table: 'donations' | 'votes' = 'donations';
+    let table: TableType | null = null;
 
-    // Try donations first
-    const { data: donation } = await supabase
-      .from('donations')
-      .select('*')
-      .eq('payment_reference', CheckoutRequestID)
-      .single();
-
-    if (donation) {
-      record = donation;
-      table = 'donations';
-    } else {
-      // Try votes
-      const { data: vote } = await supabase
-        .from('votes')
+    for (const t of tables) {
+      const { data } = await supabase
+        .from(t)
         .select('*')
         .eq('payment_reference', CheckoutRequestID)
         .single();
 
-      if (vote) {
-        record = vote;
-        table = 'votes';
+      if (data) {
+        record = data;
+        table = t;
+        break;
       }
     }
 
-    if (!record) {
+    if (!record || !table) {
       console.log('Record not found for CheckoutRequestID:', CheckoutRequestID);
       return new Response(JSON.stringify({ ResultCode: 0, ResultDesc: 'Accepted' }));
     }
@@ -90,7 +82,7 @@ serve(async (req) => {
 
         // Update creator stats
         await supabase.rpc('update_creator_donation_stats', { _donation_id: record.id });
-      } else {
+      } else if (table === 'votes') {
         await supabase
           .from('votes')
           .update({
@@ -101,6 +93,92 @@ serve(async (req) => {
 
         // Update nominee vote count
         await supabase.rpc('update_nominee_votes', { _vote_id: record.id });
+      } else if (table === 'gifts') {
+        await supabase
+          .from('gifts')
+          .update({
+            status: 'completed',
+            mpesa_receipt: mpesaReceipt
+          })
+          .eq('id', record.id);
+
+        // Create transaction record for gift
+        await supabase.from('transactions').insert({
+          creator_id: record.creator_id,
+          type: 'donation', // Gifts count as donations
+          amount: record.total_amount,
+          fee: record.platform_fee,
+          net_amount: record.creator_amount,
+          status: 'completed',
+          payment_provider: 'mpesa',
+          payment_reference: mpesaReceipt,
+          reference_type: 'gift',
+          reference_id: record.id,
+          description: `Gift from ${record.sender_name || 'Anonymous'}`
+        });
+      } else if (table === 'campaign_contributions') {
+        await supabase
+          .from('campaign_contributions')
+          .update({
+            status: 'completed',
+            mpesa_receipt: mpesaReceipt
+          })
+          .eq('id', record.id);
+
+        // Update campaign current_amount and supporter_count
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('current_amount, supporter_count, creator_id')
+          .eq('id', record.campaign_id)
+          .single();
+
+        if (campaign) {
+          await supabase
+            .from('campaigns')
+            .update({
+              current_amount: (campaign.current_amount || 0) + record.amount,
+              supporter_count: (campaign.supporter_count || 0) + 1
+            })
+            .eq('id', record.campaign_id);
+
+          // Create transaction record
+          await supabase.from('transactions').insert({
+            creator_id: campaign.creator_id,
+            type: 'donation',
+            amount: record.amount,
+            fee: record.amount * 0.05,
+            net_amount: record.amount * 0.95,
+            status: 'completed',
+            payment_provider: 'mpesa',
+            payment_reference: mpesaReceipt,
+            reference_type: 'campaign',
+            reference_id: record.id,
+            description: `Campaign contribution from ${record.donor_name || 'Anonymous'}`
+          });
+        }
+      } else if (table === 'orders') {
+        await supabase
+          .from('orders')
+          .update({
+            status: 'processing',
+            payment_reference: mpesaReceipt
+          })
+          .eq('id', record.id);
+
+        // Create transaction record
+        await supabase.from('transactions').insert({
+          creator_id: record.creator_id,
+          type: 'merchandise',
+          amount: record.total,
+          fee: record.platform_fee,
+          net_amount: record.creator_amount,
+          status: 'completed',
+          payment_provider: 'mpesa',
+          payment_reference: mpesaReceipt,
+          reference_type: 'order',
+          reference_id: record.id,
+          description: `Order from ${record.customer_name}`
+        });
       }
     } else {
       // Payment failed

@@ -26,6 +26,11 @@ export interface Creator {
   rejection_reason: string | null;
   suspension_reason: string | null;
   approved_at: string | null;
+  referred_by: string | null;
+  referral_code: string | null;
+  referral_tier: number | null;
+  total_referral_earnings: number | null;
+  is_partner: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -120,7 +125,8 @@ export const useCreateCreator = () => {
           bio: creatorData.bio,
           category_id: creatorData.category_id,
           mpesa_phone: creatorData.mpesa_phone,
-          paypal_email: creatorData.paypal_email
+          paypal_email: creatorData.paypal_email,
+          referred_by: creatorData.referred_by
         })
         .select()
         .single();

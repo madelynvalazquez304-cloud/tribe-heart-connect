@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Heart, AtSign, Sparkles, Palette, Phone, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,14 +8,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateCreator, useCreatorCategories } from '@/hooks/useCreator';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
+import { getCachedReferralCode } from '@/hooks/useReferralCache';
+
+// Also check URL for ref param
+const REFERRAL_STORAGE_KEY = 'tribeyangu_referral_code';
+const REFERRAL_EXPIRY_KEY = 'tribeyangu_referral_expiry';
+const REFERRAL_TTL_DAYS = 30;
+
+const cacheReferral = (code: string) => {
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + REFERRAL_TTL_DAYS);
+  localStorage.setItem(REFERRAL_STORAGE_KEY, code);
+  localStorage.setItem(REFERRAL_EXPIRY_KEY, expiryDate.toISOString());
+};
 
 const BecomeCreator = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { data: categories, isLoading: loadingCategories } = useCreatorCategories();
   const createCreator = useCreateCreator();
+  const [referrerName, setReferrerName] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -26,7 +42,32 @@ const BecomeCreator = () => {
     mpesa_phone: ''
   });
 
-  const [isChecking, setIsChecking] = useState(false);
+  // Cache referral code from URL if present
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      cacheReferral(ref);
+    }
+  }, [searchParams]);
+
+  // Check for cached referral and get referrer info
+  useEffect(() => {
+    const fetchReferrer = async () => {
+      const referralCode = searchParams.get('ref') || getCachedReferralCode();
+      if (referralCode) {
+        const { data } = await supabase
+          .from('creators')
+          .select('display_name')
+          .eq('referral_code', referralCode)
+          .single();
+        
+        if (data) {
+          setReferrerName(data.display_name);
+        }
+      }
+    };
+    fetchReferrer();
+  }, [searchParams]);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -47,6 +88,22 @@ const BecomeCreator = () => {
       return;
     }
 
+    // Get referral code
+    const referralCode = searchParams.get('ref') || getCachedReferralCode();
+    let referrerId: string | null = null;
+
+    if (referralCode) {
+      const { data: referrer } = await supabase
+        .from('creators')
+        .select('id')
+        .eq('referral_code', referralCode)
+        .single();
+      
+      if (referrer) {
+        referrerId = referrer.id;
+      }
+    }
+
     try {
       await createCreator.mutateAsync({
         username: formData.username,
@@ -54,8 +111,13 @@ const BecomeCreator = () => {
         tribe_name: formData.tribe_name || null,
         bio: formData.bio || null,
         category_id: formData.category_id || null,
-        mpesa_phone: formData.mpesa_phone || null
+        mpesa_phone: formData.mpesa_phone || null,
+        referred_by: referrerId
       });
+
+      // Clear cached referral after successful use
+      localStorage.removeItem(REFERRAL_STORAGE_KEY);
+      localStorage.removeItem(REFERRAL_EXPIRY_KEY);
 
       toast.success('Creator profile created! Pending admin approval.');
       navigate('/dashboard');
@@ -67,6 +129,8 @@ const BecomeCreator = () => {
       }
     }
   };
+
+  const referralCode = searchParams.get('ref') || getCachedReferralCode();
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,6 +145,13 @@ const BecomeCreator = () => {
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Become a Creator</h1>
             <p className="text-muted-foreground">Set up your profile and start receiving support from your tribe</p>
+            
+            {referrerName && (
+              <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary">
+                <Sparkles className="w-4 h-4" />
+                Referred by <span className="font-semibold">{referrerName}</span>
+              </div>
+            )}
           </div>
 
           {/* Form */}
@@ -101,7 +172,7 @@ const BecomeCreator = () => {
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Your page will be: tribeyangu.com/@{formData.username || 'yourname'}
+                  Your page will be: {window.location.origin}/@{formData.username || 'yourname'}
                 </p>
               </div>
 
