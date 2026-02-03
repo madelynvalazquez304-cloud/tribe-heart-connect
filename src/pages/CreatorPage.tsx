@@ -7,21 +7,20 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Heart, Users, Share2, Check, ExternalLink, Loader2, Phone, AlertCircle, CheckCircle2, XCircle, Gift } from 'lucide-react';
+import { Heart, Users, Share2, Check, ExternalLink, Phone, Gift, Wallet, Link2 } from 'lucide-react';
 import GiftingPanel from '@/components/GiftingPanel';
 import GiftAnimationOverlay from '@/components/GiftAnimationOverlay';
 import ProfileLoadingSpinner from '@/components/ProfileLoadingSpinner';
 import CampaignSection from '@/components/CampaignSection';
 import MerchandiseStore from '@/components/MerchandiseStore';
+import EventsSection from '@/components/EventsSection';
+import PaymentProcessingModal, { PaymentStatus } from '@/components/PaymentProcessingModal';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import NotFound from './NotFound';
 import { toast } from 'sonner';
 
 const donationAmounts = [100, 300, 500, 1000];
-
-type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
 
 const CreatorPage = () => {
   const { username } = useParams();
@@ -63,22 +62,6 @@ const CreatorPage = () => {
         .eq('creator_id', creator!.id)
         .eq('is_active', true)
         .order('display_order');
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!creator
-  });
-
-  const { data: recentDonations } = useQuery({
-    queryKey: ['recent-public-donations', creator?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('donations')
-        .select('donor_name, amount, message, created_at, is_anonymous')
-        .eq('creator_id', creator!.id)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(5);
       if (error) throw error;
       return data;
     },
@@ -215,22 +198,52 @@ const CreatorPage = () => {
     '--creator-accent': creator.theme_accent || '#D4A853',
   } as React.CSSProperties;
 
+  const themeColor = creator.theme_primary || '#E07B4C';
+
   return (
     <div style={themeStyles}>
       <Header />
       <GiftAnimationOverlay creatorId={creator.id} />
       <main className="min-h-screen pt-16">
-        {/* Banner */}
+        {/* Banner with floating action icons */}
         <div className="relative h-48 md:h-64 overflow-hidden">
           {creator.banner_url ? (
             <img src={creator.banner_url} alt="" className="w-full h-full object-cover" />
           ) : (
             <div 
               className="w-full h-full" 
-              style={{ background: `linear-gradient(135deg, ${creator.theme_primary || '#E07B4C'}, ${creator.theme_secondary || '#8B9A6B'})` }}
+              style={{ background: `linear-gradient(135deg, ${themeColor}, ${creator.theme_secondary || '#8B9A6B'})` }}
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
+          
+          {/* Floating action icons on banner */}
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            {creator.mpesa_phone && (
+              <div 
+                className="w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                title="Payouts enabled"
+              >
+                <Wallet className="w-5 h-5" style={{ color: themeColor }} />
+              </div>
+            )}
+            {links && links.length > 0 && (
+              <div 
+                className="w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                title={`${links.length} links`}
+              >
+                <Link2 className="w-5 h-5" style={{ color: themeColor }} />
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleShare} 
+              className="gap-2 bg-white/90 backdrop-blur border-0 shadow-lg hover:scale-105 transition-transform"
+            >
+              <Share2 className="w-4 h-4" /> Share
+            </Button>
+          </div>
         </div>
 
         <div className="container mx-auto px-4 -mt-20 relative z-10 pb-12">
@@ -243,17 +256,20 @@ const CreatorPage = () => {
                   <div className="flex flex-col md:flex-row gap-6">
                     {/* Avatar */}
                     <div className="relative flex-shrink-0">
-                      <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden bg-primary/10 shadow-lg">
+                      <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden bg-primary/10 shadow-lg ring-4 ring-background">
                         {creator.avatar_url ? (
                           <img src={creator.avatar_url} alt={creator.display_name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-primary">
+                          <div className="w-full h-full flex items-center justify-center text-3xl font-bold" style={{ color: themeColor }}>
                             {creator.display_name.charAt(0)}
                           </div>
                         )}
                       </div>
                       {creator.is_verified && (
-                        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md" style={{ backgroundColor: creator.theme_secondary || '#8B9A6B' }}>
+                        <div 
+                          className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md" 
+                          style={{ backgroundColor: creator.theme_secondary || '#8B9A6B' }}
+                        >
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       )}
@@ -266,9 +282,6 @@ const CreatorPage = () => {
                           <h1 className="font-display text-2xl md:text-3xl font-bold">{creator.display_name}</h1>
                           <p className="text-muted-foreground">@{creator.username}</p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={handleShare} className="gap-2">
-                          <Share2 className="w-4 h-4" /> Share
-                        </Button>
                       </div>
 
                       {creator.tribe_name && (
@@ -279,12 +292,12 @@ const CreatorPage = () => {
 
                       <div className="flex flex-wrap gap-4 text-sm">
                         <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" style={{ color: creator.theme_primary }} />
+                          <Users className="w-4 h-4" style={{ color: themeColor }} />
                           <span className="font-semibold">{creator.total_supporters || 0}</span>
                           <span className="text-muted-foreground">supporters</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Heart className="w-4 h-4" style={{ color: creator.theme_primary }} />
+                          <Heart className="w-4 h-4" style={{ color: themeColor }} />
                           <span className="font-semibold">KSh {Number(creator.total_raised || 0).toLocaleString()}</span>
                           <span className="text-muted-foreground">raised</span>
                         </div>
@@ -294,87 +307,66 @@ const CreatorPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Links */}
+              {/* Links - Horizontal scroll */}
               {links && links.length > 0 && (
-                <Card>
-                  <CardContent className="p-6">
-                    <h2 className="font-semibold mb-4">Links</h2>
-                    <div className="space-y-2">
-                      {links.map((link) => (
-                        <a
-                          key={link.id}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                        >
-                          <span className="text-xl">{link.icon || '🔗'}</span>
-                          <span className="font-medium flex-1">{link.title}</span>
-                          <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                        </a>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {links.map((link) => (
+                    <a
+                      key={link.id}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-card border shadow-sm hover:shadow-md transition-all whitespace-nowrap"
+                    >
+                      <span className="text-lg">{link.icon || '🔗'}</span>
+                      <span className="font-medium text-sm">{link.title}</span>
+                      <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                    </a>
+                  ))}
+                </div>
               )}
 
-              {/* Recent Supporters */}
-              {recentDonations && recentDonations.length > 0 && (
-                <Card>
-                  <CardContent className="p-6">
-                    <h2 className="font-semibold mb-4">Recent Supporters</h2>
-                    <div className="space-y-3">
-                      {recentDonations.map((donation, i) => (
-                        <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30">
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: creator.theme_primary + '20', color: creator.theme_primary }}>
-                            {donation.is_anonymous ? '?' : (donation.donor_name?.charAt(0) || '?')}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className="font-medium">{donation.is_anonymous ? 'Anonymous' : (donation.donor_name || 'Someone')}</p>
-                              <p className="font-semibold" style={{ color: creator.theme_primary }}>KSh {Number(donation.amount).toLocaleString()}</p>
-                            </div>
-                            {donation.message && (
-                              <p className="text-sm text-muted-foreground mt-1">"{donation.message}"</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Donation & Gifting Sidebar */}
-            <div className="lg:col-span-1 space-y-4">
-              {/* Gifting Panel */}
-              <GiftingPanel 
-                creatorId={creator.id} 
+              {/* Events Section */}
+              <EventsSection 
+                creatorId={creator.id}
                 creatorName={creator.display_name}
-                themeColor={creator.theme_primary || '#E07B4C'}
+                themeColor={themeColor}
               />
 
               {/* Campaigns */}
               <CampaignSection 
                 creatorId={creator.id}
                 creatorName={creator.display_name}
-                themeColor={creator.theme_primary || '#E07B4C'}
+                themeColor={themeColor}
               />
 
               {/* Merchandise Store */}
               <MerchandiseStore 
                 creatorId={creator.id}
                 creatorName={creator.display_name}
-                themeColor={creator.theme_primary || '#E07B4C'}
+                themeColor={themeColor}
+              />
+            </div>
+
+            {/* Support Sidebar */}
+            <div className="lg:col-span-1 space-y-4">
+              {/* Gifting Panel */}
+              <GiftingPanel 
+                creatorId={creator.id} 
+                creatorName={creator.display_name}
+                themeColor={themeColor}
               />
               
+              {/* Donation Card */}
               <div className="sticky top-24">
                 <Card className="shadow-lg overflow-hidden">
-                  <div className="h-2" style={{ backgroundColor: creator.theme_primary }} />
+                  <div className="h-2" style={{ backgroundColor: themeColor }} />
                   <CardContent className="p-6">
                     <div className="text-center mb-6">
-                      <div className="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: creator.theme_primary }}>
+                      <div 
+                        className="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center" 
+                        style={{ backgroundColor: themeColor }}
+                      >
                         <Heart className="w-7 h-7 text-white" />
                       </div>
                       <h2 className="font-display text-xl font-bold">
@@ -396,7 +388,7 @@ const CreatorPage = () => {
                               ? 'text-white shadow-lg'
                               : 'bg-secondary text-foreground hover:bg-secondary/80'
                           }`}
-                          style={selectedAmount === amount ? { backgroundColor: creator.theme_primary } : undefined}
+                          style={selectedAmount === amount ? { backgroundColor: themeColor } : undefined}
                         >
                           KSh {amount}
                         </button>
@@ -445,15 +437,11 @@ const CreatorPage = () => {
                     <Button
                       className="w-full gap-2 text-white"
                       size="lg"
-                      style={{ backgroundColor: creator.theme_primary }}
+                      style={{ backgroundColor: themeColor }}
                       onClick={handleDonate}
                       disabled={initiateDonation.isPending}
                     >
-                      {initiateDonation.isPending ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Heart className="w-5 h-5" />
-                      )}
+                      <Heart className="w-5 h-5" />
                       Support with KSh {customAmount || selectedAmount || 0}
                     </Button>
 
@@ -469,67 +457,16 @@ const CreatorPage = () => {
       </main>
       <Footer />
 
-      {/* Payment Dialog */}
-      <Dialog open={paymentDialog} onOpenChange={(open) => !open && resetPayment()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {paymentStatus === 'processing' && 'Initiating Payment...'}
-              {paymentStatus === 'polling' && 'Waiting for Payment...'}
-              {paymentStatus === 'success' && 'Payment Successful!'}
-              {paymentStatus === 'failed' && 'Payment Failed'}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="py-8 text-center">
-            {(paymentStatus === 'processing' || paymentStatus === 'polling') && (
-              <>
-                <Loader2 className="w-16 h-16 mx-auto mb-4 animate-spin text-primary" />
-                <p className="text-muted-foreground">
-                  {paymentStatus === 'processing' 
-                    ? 'Sending STK Push to your phone...'
-                    : 'Please complete the payment on your phone'}
-                </p>
-                {paymentStatus === 'polling' && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Check your phone for the M-PESA prompt
-                  </p>
-                )}
-              </>
-            )}
-
-            {paymentStatus === 'success' && (
-              <>
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircle2 className="w-12 h-12 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Thank You!</h3>
-                <p className="text-muted-foreground">
-                  Your support means everything to {creator.display_name}! 💚
-                </p>
-              </>
-            )}
-
-            {paymentStatus === 'failed' && (
-              <>
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-                  <XCircle className="w-12 h-12 text-red-600" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Payment Failed</h3>
-                <p className="text-muted-foreground">
-                  The payment was not completed. Please try again.
-                </p>
-              </>
-            )}
-          </div>
-
-          {(paymentStatus === 'success' || paymentStatus === 'failed') && (
-            <Button onClick={resetPayment} className="w-full">
-              {paymentStatus === 'success' ? 'Done' : 'Try Again'}
-            </Button>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Payment Processing Modal */}
+      <PaymentProcessingModal
+        open={paymentDialog}
+        onClose={resetPayment}
+        status={paymentStatus}
+        type="donation"
+        creatorName={creator.display_name}
+        amount={customAmount ? parseInt(customAmount) : selectedAmount || 0}
+        themeColor={themeColor}
+      />
     </div>
   );
 };

@@ -12,8 +12,12 @@ interface STKPushRequest {
   creatorId: string;
   donorName?: string;
   message?: string;
-  type: 'donation' | 'vote';
+  type: 'donation' | 'vote' | 'gift' | 'campaign' | 'merchandise';
   referenceId?: string;
+  giftTypeId?: string;
+  quantity?: number;
+  campaignId?: string;
+  orderId?: string;
 }
 
 serve(async (req) => {
@@ -27,7 +31,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: STKPushRequest = await req.json();
-    const { phone, amount, creatorId, donorName, message, type, referenceId } = body;
+    const { phone, amount, creatorId, donorName, message, type, referenceId, giftTypeId, quantity, campaignId, orderId } = body;
 
     // Get active M-PESA config
     const { data: config, error: configError } = await supabase
@@ -82,9 +86,13 @@ serve(async (req) => {
     const timestamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
     const password = btoa(`${mpesaConfig.paybill}${mpesaConfig.passkey}${timestamp}`);
 
-    // Create pending donation/vote record
+    // Create pending record based on type
     let recordId: string;
-    const platformFee = type === 'donation' ? amount * 0.05 : amount * 0.2;
+    const platformFee = type === 'donation' || type === 'gift' || type === 'campaign' 
+      ? amount * 0.05 
+      : type === 'vote' 
+        ? amount * 0.2 
+        : amount * 0.1;
     const creatorAmount = amount - platformFee;
 
     if (type === 'donation') {
@@ -106,14 +114,13 @@ serve(async (req) => {
 
       if (error) throw error;
       recordId = donation.id;
-    } else {
-      // Vote
+    } else if (type === 'vote') {
       const { data: vote, error } = await supabase
         .from('votes')
         .insert({
           nominee_id: referenceId,
           amount_paid: amount,
-          vote_count: Math.floor(amount / 10), // KSh 10 per vote
+          vote_count: Math.floor(amount / 10),
           voter_phone: formattedPhone,
           payment_provider: 'mpesa',
           platform_fee: platformFee,
@@ -124,10 +131,65 @@ serve(async (req) => {
 
       if (error) throw error;
       recordId = vote.id;
+    } else if (type === 'gift') {
+      const { data: gift, error } = await supabase
+        .from('gifts')
+        .insert({
+          creator_id: creatorId,
+          gift_type_id: giftTypeId,
+          sender_name: donorName || null,
+          sender_phone: formattedPhone,
+          message: message || null,
+          quantity: quantity || 1,
+          total_amount: amount,
+          platform_fee: platformFee,
+          creator_amount: creatorAmount,
+          payment_provider: 'mpesa',
+          status: 'pending'
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      recordId = gift.id;
+    } else if (type === 'campaign') {
+      const { data: contribution, error } = await supabase
+        .from('campaign_contributions')
+        .insert({
+          campaign_id: campaignId,
+          donor_name: donorName || null,
+          donor_phone: formattedPhone,
+          message: message || null,
+          amount,
+          payment_provider: 'mpesa',
+          status: 'pending'
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      recordId = contribution.id;
+    } else if (type === 'merchandise') {
+      // Update existing order status
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'pending' })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      recordId = orderId!;
+    } else {
+      throw new Error('Invalid payment type');
     }
 
     // Initiate STK Push
     const callbackUrl = `${supabaseUrl}/functions/v1/mpesa-callback`;
+    const transactionDesc = type === 'donation' ? 'TribeYangu Donation' 
+      : type === 'vote' ? 'TribeYangu Vote'
+      : type === 'gift' ? 'TribeYangu Gift'
+      : type === 'campaign' ? 'TribeYangu Campaign'
+      : 'TribeYangu Purchase';
+    
     const stkPushBody = {
       BusinessShortCode: mpesaConfig.paybill,
       Password: password,
@@ -139,7 +201,7 @@ serve(async (req) => {
       PhoneNumber: formattedPhone,
       CallBackURL: callbackUrl,
       AccountReference: `TY${recordId.slice(0, 8)}`,
-      TransactionDesc: type === 'donation' ? 'TribeYangu Donation' : 'TribeYangu Vote'
+      TransactionDesc: transactionDesc
     };
 
     const stkResponse = await fetch(`${baseUrl}/mpesa/stkpush/v1/processrequest`, {
@@ -155,7 +217,15 @@ serve(async (req) => {
 
     if (stkResult.ResponseCode === '0') {
       // Update record with checkout request ID
-      const table = type === 'donation' ? 'donations' : 'votes';
+      const tableMap: Record<string, string> = {
+        donation: 'donations',
+        vote: 'votes',
+        gift: 'gifts',
+        campaign: 'campaign_contributions',
+        merchandise: 'orders'
+      };
+      const table = tableMap[type];
+      
       await supabase
         .from(table)
         .update({ payment_reference: stkResult.CheckoutRequestID })
@@ -171,9 +241,17 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
-      // Delete the pending record
-      const table = type === 'donation' ? 'donations' : 'votes';
-      await supabase.from(table).delete().eq('id', recordId);
+      // Delete the pending record (except for merchandise)
+      if (type !== 'merchandise') {
+        const tableMap: Record<string, string> = {
+          donation: 'donations',
+          vote: 'votes',
+          gift: 'gifts',
+          campaign: 'campaign_contributions'
+        };
+        const table = tableMap[type];
+        await supabase.from(table).delete().eq('id', recordId);
+      }
 
       return new Response(
         JSON.stringify({ error: stkResult.errorMessage || 'STK Push failed' }),

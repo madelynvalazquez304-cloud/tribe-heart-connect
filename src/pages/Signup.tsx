@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Heart, Mail, Lock, User, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+
+// Referral cache utility
+const REFERRAL_STORAGE_KEY = 'tribeyangu_referral_code';
+const REFERRAL_EXPIRY_KEY = 'tribeyangu_referral_expiry';
+const REFERRAL_TTL_DAYS = 30;
+
+const cacheReferral = (code: string) => {
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + REFERRAL_TTL_DAYS);
+  localStorage.setItem(REFERRAL_STORAGE_KEY, code);
+  localStorage.setItem(REFERRAL_EXPIRY_KEY, expiryDate.toISOString());
+};
 
 const Signup = () => {
   const [fullName, setFullName] = useState('');
@@ -14,8 +26,19 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreatorSignup, setIsCreatorSignup] = useState(false);
   const { signUp, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Check for referral code and cache it
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      cacheReferral(ref);
+      setIsCreatorSignup(true);
+    }
+  }, [searchParams]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -25,10 +48,16 @@ const Signup = () => {
       } else if (isCreator) {
         navigate('/dashboard');
       } else {
-        navigate('/account');
+        // If they came from a referral link, send them to become a creator
+        const ref = searchParams.get('ref') || localStorage.getItem(REFERRAL_STORAGE_KEY);
+        if (ref && isCreatorSignup) {
+          navigate('/become-creator');
+        } else {
+          navigate('/account');
+        }
       }
     }
-  }, [user, isAdmin, isCreator, authLoading, navigate]);
+  }, [user, isAdmin, isCreator, authLoading, navigate, searchParams, isCreatorSignup]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +86,8 @@ const Signup = () => {
     // Auto-redirect will happen when auth state updates
   };
 
+  const hasReferral = searchParams.get('ref') || localStorage.getItem(REFERRAL_STORAGE_KEY);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -68,8 +99,22 @@ const Signup = () => {
             </div>
             <span className="text-2xl font-bold text-foreground">TribeYangu</span>
           </Link>
-          <h1 className="text-2xl font-bold mt-6 text-foreground">Create Account</h1>
-          <p className="text-muted-foreground mt-2">Join TribeYangu and support your favorite creators</p>
+          <h1 className="text-2xl font-bold mt-6 text-foreground">
+            {hasReferral ? 'Join as a Creator' : 'Create Account'}
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            {hasReferral 
+              ? 'You\'ve been invited to join TribeYangu as a creator!'
+              : 'Join TribeYangu and support your favorite creators'
+            }
+          </p>
+          
+          {hasReferral && (
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
+              <Sparkles className="w-4 h-4" />
+              Partner Referral
+            </div>
+          )}
         </div>
 
         {/* Form */}
@@ -156,6 +201,11 @@ const Signup = () => {
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Creating account...
+                </>
+              ) : hasReferral ? (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Create Creator Account
                 </>
               ) : (
                 'Create Account'
