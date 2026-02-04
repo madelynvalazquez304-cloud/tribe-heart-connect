@@ -7,17 +7,22 @@ import { cn } from '@/lib/utils';
 export type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
 
 interface PaymentProcessingModalProps {
-  open: boolean;
+  isOpen?: boolean;
+  open?: boolean;
   onClose: () => void;
   status: PaymentStatus;
-  type: 'donation' | 'gift' | 'campaign' | 'purchase';
+  type: 'donation' | 'gift' | 'campaign' | 'purchase' | 'ticket';
   creatorName?: string;
   amount?: number;
   giftIcon?: string;
   themeColor?: string;
+  recordId?: string;
+  onComplete?: (success: boolean) => void;
+  successMessage?: string;
 }
 
 const PaymentProcessingModal: React.FC<PaymentProcessingModalProps> = ({
+  isOpen,
   open,
   onClose,
   status,
@@ -25,19 +30,23 @@ const PaymentProcessingModal: React.FC<PaymentProcessingModalProps> = ({
   creatorName = 'Creator',
   amount = 0,
   giftIcon,
-  themeColor = '#E07B4C'
+  themeColor = '#E07B4C',
+  successMessage
 }) => {
+  const isVisible = isOpen ?? open ?? false;
+  
   const typeLabels = {
     donation: { title: 'Support', success: 'Thank You!', icon: '💚' },
     gift: { title: 'Gift', success: 'Gift Sent!', icon: giftIcon || '🎁' },
     campaign: { title: 'Contribution', success: 'Contribution Received!', icon: '🎯' },
-    purchase: { title: 'Purchase', success: 'Order Confirmed!', icon: '🛍️' }
+    purchase: { title: 'Purchase', success: 'Order Confirmed!', icon: '🛍️' },
+    ticket: { title: 'Ticket Purchase', success: 'Tickets Confirmed!', icon: '🎫' }
   };
 
   const currentType = typeLabels[type];
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={isVisible} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md overflow-hidden">
         <div 
           className="absolute inset-0 opacity-5 pointer-events-none"
@@ -54,7 +63,7 @@ const PaymentProcessingModal: React.FC<PaymentProcessingModalProps> = ({
           <DialogDescription className="text-center">
             {status === 'processing' && 'Sending STK Push to your phone...'}
             {status === 'polling' && 'Please complete the payment on your phone'}
-            {status === 'success' && `Your ${type} means everything to ${creatorName}!`}
+            {status === 'success' && (successMessage || `Your ${type} means everything to ${creatorName}!`)}
             {status === 'failed' && 'The payment could not be completed.'}
           </DialogDescription>
         </DialogHeader>

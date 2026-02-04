@@ -53,6 +53,7 @@ export type Database = {
       award_categories: {
         Row: {
           banner_url: string | null
+          category_id: string | null
           created_at: string
           description: string | null
           icon: string | null
@@ -67,6 +68,7 @@ export type Database = {
         }
         Insert: {
           banner_url?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           icon?: string | null
@@ -81,6 +83,7 @@ export type Database = {
         }
         Update: {
           banner_url?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           icon?: string | null
@@ -93,7 +96,15 @@ export type Database = {
           voting_ends_at?: string | null
           voting_starts_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "award_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "creator_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       award_nominees: {
         Row: {
@@ -520,6 +531,64 @@ export type Database = {
           {
             foreignKeyName: "donations_creator_id_fkey"
             columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_collaborations: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          invitee_id: string
+          inviter_id: string
+          message: string | null
+          revenue_share: number | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          invitee_id: string
+          inviter_id: string
+          message?: string | null
+          revenue_share?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          invitee_id?: string
+          inviter_id?: string
+          message?: string | null
+          revenue_share?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_collaborations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_collaborations_invitee_id_fkey"
+            columns: ["invitee_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_collaborations_inviter_id_fkey"
+            columns: ["inviter_id"]
             isOneToOne: false
             referencedRelation: "creators"
             referencedColumns: ["id"]
