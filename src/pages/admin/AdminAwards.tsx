@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Edit2, Trash2, Loader2, Trophy, Users, Calendar, DollarSign, UserPlus } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, Trophy, Users, Calendar, DollarSign, UserPlus, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -40,10 +40,11 @@ const AdminAwards = () => {
     slug: '',
     description: '',
     icon: '🏆',
-    vote_fee: 10,
+    vote_fee: 15, // Updated to 15 KSH as requested
     voting_starts_at: '',
     voting_ends_at: '',
-    is_active: true
+    is_active: true,
+    category_id: ''
   });
   const [selectedCreator, setSelectedCreator] = useState('');
 
@@ -52,7 +53,10 @@ const AdminAwards = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('award_categories')
-        .select('*')
+        .select(`
+          *,
+          category:creator_categories(id, name, icon)
+        `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -94,22 +98,41 @@ const AdminAwards = () => {
     }
   });
 
+  const { data: categories } = useQuery({
+    queryKey: ['creator-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('creator_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   const createAward = useMutation({
     mutationFn: async (data: typeof formData) => {
       const { error } = await supabase
         .from('award_categories')
         .insert({
-          ...data,
+          name: data.name,
           slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
+          description: data.description,
+          icon: data.icon,
+          vote_fee: data.vote_fee,
           voting_starts_at: data.voting_starts_at || null,
-          voting_ends_at: data.voting_ends_at || null
+          voting_ends_at: data.voting_ends_at || null,
+          is_active: data.is_active,
+          category_id: data.category_id || null
         });
       
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-awards'] });
-      toast.success('Award category created');
+      toast.success('Award category created! All creators in the selected category have been automatically added as nominees.');
       resetForm();
     },
     onError: (error: Error) => {
@@ -122,9 +145,15 @@ const AdminAwards = () => {
       const { error } = await supabase
         .from('award_categories')
         .update({
-          ...data,
+          name: data.name,
+          slug: data.slug,
+          description: data.description,
+          icon: data.icon,
+          vote_fee: data.vote_fee,
           voting_starts_at: data.voting_starts_at || null,
-          voting_ends_at: data.voting_ends_at || null
+          voting_ends_at: data.voting_ends_at || null,
+          is_active: data.is_active,
+          category_id: data.category_id || null
         })
         .eq('id', id);
       
@@ -132,6 +161,7 @@ const AdminAwards = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-awards'] });
+      queryClient.invalidateQueries({ queryKey: ['award-nominees'] });
       toast.success('Award category updated');
       resetForm();
     },
@@ -206,10 +236,11 @@ const AdminAwards = () => {
       slug: '',
       description: '',
       icon: '🏆',
-      vote_fee: 10,
+      vote_fee: 15,
       voting_starts_at: '',
       voting_ends_at: '',
-      is_active: true
+      is_active: true,
+      category_id: ''
     });
   };
 
@@ -220,10 +251,11 @@ const AdminAwards = () => {
       slug: award.slug,
       description: award.description || '',
       icon: award.icon || '🏆',
-      vote_fee: award.vote_fee || 10,
+      vote_fee: award.vote_fee || 15,
       voting_starts_at: award.voting_starts_at ? award.voting_starts_at.split('T')[0] : '',
       voting_ends_at: award.voting_ends_at ? award.voting_ends_at.split('T')[0] : '',
-      is_active: award.is_active
+      is_active: award.is_active,
+      category_id: award.category_id || ''
     });
     setIsOpen(true);
   };
@@ -250,7 +282,7 @@ const AdminAwards = () => {
     if (!start || !end) return { label: 'Draft', variant: 'outline' as const };
     if (now < start) return { label: 'Upcoming', variant: 'outline' as const };
     if (now > end) return { label: 'Ended', variant: 'secondary' as const };
-    return { label: 'Live', variant: 'default' as const };
+    return { label: '🔴 Live', variant: 'default' as const };
   };
 
   const availableCreators = creators?.filter(
@@ -263,7 +295,7 @@ const AdminAwards = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Awards & Voting</h1>
-            <p className="text-muted-foreground mt-1">Create and manage award categories for fan voting</p>
+            <p className="text-muted-foreground mt-1">Create awards by category — all creators in that category become nominees automatically!</p>
           </div>
           <Dialog open={isOpen} onOpenChange={(open) => {
             if (!open) resetForm();
@@ -279,7 +311,7 @@ const AdminAwards = () => {
               <DialogHeader>
                 <DialogTitle>{editingAward ? 'Edit Award' : 'Create Award Category'}</DialogTitle>
                 <DialogDescription>
-                  Set up voting for fans to support their favorite creators
+                  Select a category to automatically add all approved creators as nominees
                 </DialogDescription>
               </DialogHeader>
               
@@ -303,6 +335,31 @@ const AdminAwards = () => {
                     />
                   </div>
                 </div>
+
+                {/* Category Selection - Auto adds all creators in category */}
+                <div className="space-y-2">
+                  <Label>Creator Category (Auto-add all as nominees)</Label>
+                  <Select 
+                    value={formData.category_id} 
+                    onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No category (manual nominees)</SelectItem>
+                      {categories?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.icon} {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    All approved creators in this category will be automatically added as nominees
+                  </p>
+                </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
@@ -320,8 +377,9 @@ const AdminAwards = () => {
                     id="vote_fee"
                     type="number"
                     value={formData.vote_fee}
-                    onChange={(e) => setFormData({ ...formData, vote_fee: parseInt(e.target.value) || 10 })}
+                    onChange={(e) => setFormData({ ...formData, vote_fee: parseInt(e.target.value) || 15 })}
                   />
+                  <p className="text-xs text-muted-foreground">Default: KSh 15 per vote</p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -388,6 +446,7 @@ const AdminAwards = () => {
           <div className="grid gap-4">
             {awards?.map((award) => {
               const status = getAwardStatus(award);
+              const nomineeCount = nominees?.filter(n => n.award_id === award.id).length || 0;
               return (
                 <Card key={award.id} className="overflow-hidden">
                   <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
@@ -399,6 +458,11 @@ const AdminAwards = () => {
                         <div className="flex items-center gap-2">
                           <CardTitle>{award.name}</CardTitle>
                           <Badge variant={status.variant}>{status.label}</Badge>
+                          {award.category && (
+                            <Badge variant="outline" className="gap-1">
+                              {award.category.icon} {award.category.name}
+                            </Badge>
+                          )}
                         </div>
                         <CardDescription>{award.description || 'No description'}</CardDescription>
                       </div>
@@ -410,7 +474,7 @@ const AdminAwards = () => {
                         onClick={() => setSelectedAward(selectedAward?.id === award.id ? null : award)}
                       >
                         <Users className="w-4 h-4 mr-2" />
-                        Nominees
+                        Nominees ({nomineeCount})
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(award)}>
                         <Edit2 className="w-4 h-4" />
@@ -455,7 +519,7 @@ const AdminAwards = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-muted-foreground" />
-                        <span>Nominees</span>
+                        <span>{nomineeCount} Nominees</span>
                       </div>
                     </div>
                   </CardContent>
@@ -477,29 +541,24 @@ const AdminAwards = () => {
                               <DialogHeader>
                                 <DialogTitle>Add Nominee</DialogTitle>
                                 <DialogDescription>
-                                  Select a creator to nominate for {award.name}
+                                  Select a creator to add to this award category
                                 </DialogDescription>
                               </DialogHeader>
-                              <div className="space-y-4">
-                                <Select value={selectedCreator} onValueChange={setSelectedCreator}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select a creator" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {availableCreators?.map((creator) => (
-                                      <SelectItem key={creator.id} value={creator.id}>
-                                        {creator.display_name} (@{creator.username})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                              <Select value={selectedCreator} onValueChange={setSelectedCreator}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select creator" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableCreators?.map((creator) => (
+                                    <SelectItem key={creator.id} value={creator.id}>
+                                      {creator.display_name} (@{creator.username})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                               <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsNomineeOpen(false)}>
-                                  Cancel
-                                </Button>
-                                <Button
-                                  onClick={() => addNominee.mutate({ awardId: award.id, creatorId: selectedCreator })}
+                                <Button 
+                                  onClick={() => selectedCreator && addNominee.mutate({ awardId: award.id, creatorId: selectedCreator })}
                                   disabled={!selectedCreator || addNominee.isPending}
                                 >
                                   {addNominee.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -509,63 +568,51 @@ const AdminAwards = () => {
                             </DialogContent>
                           </Dialog>
                         </div>
-
+                        
                         {nominees?.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-4">
-                            No nominees yet. Add creators to this award.
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            No nominees yet. Add creators manually or select a category to auto-add.
                           </p>
                         ) : (
-                          <div className="grid gap-2">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {nominees?.map((nominee, index) => (
-                              <div
-                                key={nominee.id}
-                                className="flex items-center justify-between p-3 rounded-lg bg-background"
+                              <div 
+                                key={nominee.id} 
+                                className="flex items-center gap-3 p-3 rounded-lg bg-background border group"
                               >
-                                <div className="flex items-center gap-3">
-                                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                                    index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                                    index === 1 ? 'bg-gray-300 text-gray-700' :
-                                    index === 2 ? 'bg-amber-600 text-amber-100' :
-                                    'bg-muted text-muted-foreground'
-                                  }`}>
-                                    {index + 1}
-                                  </span>
-                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                    {nominee.creator?.avatar_url ? (
-                                      <img
-                                        src={nominee.creator.avatar_url}
-                                        alt=""
-                                        className="w-8 h-8 rounded-full object-cover"
-                                      />
-                                    ) : (
-                                      <span className="text-sm font-medium text-primary">
-                                        {nominee.creator?.display_name.charAt(0)}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium">{nominee.creator?.display_name}</p>
-                                    <p className="text-xs text-muted-foreground">@{nominee.creator?.username}</p>
-                                  </div>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                  index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                  index === 1 ? 'bg-gray-300 text-gray-700' :
+                                  index === 2 ? 'bg-amber-600 text-white' :
+                                  'bg-muted text-muted-foreground'
+                                }`}>
+                                  {index + 1}
                                 </div>
-                                <div className="flex items-center gap-4">
-                                  <div className="text-right">
-                                    <p className="font-bold text-primary">{nominee.total_votes}</p>
-                                    <p className="text-xs text-muted-foreground">votes</p>
+                                {nominee.creator?.avatar_url ? (
+                                  <img 
+                                    src={nominee.creator.avatar_url} 
+                                    alt="" 
+                                    className="w-10 h-10 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                    {nominee.creator?.display_name?.charAt(0)}
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-destructive"
-                                    onClick={() => {
-                                      if (confirm('Remove this nominee?')) {
-                                        removeNominee.mutate(nominee.id);
-                                      }
-                                    }}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{nominee.creator?.display_name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {nominee.total_votes} votes
+                                  </p>
                                 </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="opacity-0 group-hover:opacity-100 text-destructive"
+                                  onClick={() => removeNominee.mutate(nominee.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
                               </div>
                             ))}
                           </div>
