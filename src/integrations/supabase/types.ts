@@ -463,6 +463,36 @@ export type Database = {
           },
         ]
       }
+      disabled_accounts: {
+        Row: {
+          created_at: string
+          disabled_at: string
+          disabled_by: string | null
+          is_disabled: boolean
+          reason: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          disabled_at?: string
+          disabled_by?: string | null
+          is_disabled?: boolean
+          reason?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          disabled_at?: string
+          disabled_by?: string | null
+          is_disabled?: boolean
+          reason?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       donations: {
         Row: {
           amount: number
@@ -1178,6 +1208,84 @@ export type Database = {
             columns: ["referrer_id"]
             isOneToOne: false
             referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_payments: {
+        Row: {
+          amount: number
+          buyer_email: string | null
+          buyer_name: string
+          buyer_phone: string
+          created_at: string
+          creator_amount: number | null
+          creator_id: string
+          id: string
+          mpesa_receipt: string | null
+          payment_provider:
+            | Database["public"]["Enums"]["payment_provider"]
+            | null
+          payment_reference: string | null
+          platform_fee: number | null
+          quantity: number
+          status: string
+          ticket_type_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          buyer_email?: string | null
+          buyer_name: string
+          buyer_phone: string
+          created_at?: string
+          creator_amount?: number | null
+          creator_id: string
+          id?: string
+          mpesa_receipt?: string | null
+          payment_provider?:
+            | Database["public"]["Enums"]["payment_provider"]
+            | null
+          payment_reference?: string | null
+          platform_fee?: number | null
+          quantity?: number
+          status?: string
+          ticket_type_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          buyer_email?: string | null
+          buyer_name?: string
+          buyer_phone?: string
+          created_at?: string
+          creator_amount?: number | null
+          creator_id?: string
+          id?: string
+          mpesa_receipt?: string | null
+          payment_provider?:
+            | Database["public"]["Enums"]["payment_provider"]
+            | null
+          payment_reference?: string | null
+          platform_fee?: number | null
+          quantity?: number
+          status?: string
+          ticket_type_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_payments_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_payments_ticket_type_id_fkey"
+            columns: ["ticket_type_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_types"
             referencedColumns: ["id"]
           },
         ]
