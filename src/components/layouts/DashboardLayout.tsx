@@ -29,7 +29,8 @@ import {
   Gift,
   Megaphone,
   Handshake,
-  Ban
+  Ban,
+  ShoppingCart
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -61,6 +62,7 @@ const adminNavItems: NavItem[] = [
   { label: 'Transactions', href: '/admin/transactions', icon: DollarSign },
   { label: 'Campaigns', href: '/admin/campaigns', icon: Megaphone },
   { label: 'Merchandise', href: '/admin/merchandise', icon: ShoppingBag },
+  { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { label: 'Events', href: '/admin/events', icon: Ticket },
   { label: 'Gifts', href: '/admin/gifts', icon: Gift },
   { label: 'Partners', href: '/admin/partners', icon: Handshake },
@@ -76,6 +78,7 @@ const creatorNavItems: NavItem[] = [
   { label: 'Gifts', href: '/dashboard/gifts', icon: Gift },
   { label: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
   { label: 'Merchandise', href: '/dashboard/merchandise', icon: ShoppingBag },
+  { label: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
   { label: 'Events', href: '/dashboard/events', icon: Ticket },
   { label: 'Withdrawals', href: '/dashboard/withdrawals', icon: Wallet },
   { label: 'Partners', href: '/dashboard/partners', icon: Handshake },
