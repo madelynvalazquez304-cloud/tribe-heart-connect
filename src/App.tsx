@@ -50,6 +50,10 @@ import AdminCampaigns from "./pages/admin/AdminCampaigns";
 import AdminGifts from "./pages/admin/AdminGifts";
 import AdminPartners from "./pages/admin/AdminPartners";
 import AdminDisabledAccounts from "./pages/admin/AdminDisabledAccounts";
+import AdminOrders from "./pages/admin/AdminOrders";
+
+// Additional Creator Pages
+import CreatorOrders from "./pages/creator/CreatorOrders";
 
 const queryClient = new QueryClient();
 
@@ -156,6 +160,11 @@ const App = () => (
                 <AdminDisabledAccounts />
               </ProtectedRoute>
             } />
+            <Route path="/admin/orders" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminOrders />
+              </ProtectedRoute>
+            } />
 
             {/* Creator Routes */}
             <Route path="/dashboard" element={
@@ -221,6 +230,11 @@ const App = () => (
             <Route path="/dashboard/partners" element={
               <ProtectedRoute requiredRole="creator">
                 <CreatorPartners />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/orders" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorOrders />
               </ProtectedRoute>
             } />
 

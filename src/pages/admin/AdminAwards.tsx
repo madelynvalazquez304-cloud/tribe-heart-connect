@@ -340,14 +340,14 @@ const AdminAwards = () => {
                 <div className="space-y-2">
                   <Label>Creator Category (Auto-add all as nominees)</Label>
                   <Select 
-                    value={formData.category_id} 
-                    onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                    value={formData.category_id || 'none'} 
+                    onValueChange={(value) => setFormData({ ...formData, category_id: value === 'none' ? '' : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No category (manual nominees)</SelectItem>
+                      <SelectItem value="none">No category (manual nominees)</SelectItem>
                       {categories?.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.icon} {cat.name}
