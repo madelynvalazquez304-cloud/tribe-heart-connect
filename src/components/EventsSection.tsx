@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -62,28 +62,15 @@ const EventsSection: React.FC<EventsSectionProps> = ({ creatorId, creatorName, t
 
       const total = ticketType.price * quantity;
 
-      // Create ticket(s)
-      const ticketPromises = Array.from({ length: quantity }, () =>
-        supabase.from('tickets').insert({
-          ticket_type_id: selectedTicketType,
-          buyer_name: buyerName,
-          buyer_phone: buyerPhone,
-          buyer_email: buyerEmail || null,
-          status: 'valid'
-        }).select().single()
-      );
-
-      const ticketResults = await Promise.all(ticketPromises);
-      const firstTicket = ticketResults[0].data;
-
-      // Initiate payment
+      // Initiate payment via ticket_payments
       const response = await supabase.functions.invoke('mpesa-stk', {
         body: {
           phone: buyerPhone,
           amount: total,
           creatorId,
           type: 'ticket',
-          ticketId: firstTicket?.id,
+          ticketTypeId: selectedTicketType,
+          quantity,
           donorName: buyerName
         }
       });
@@ -102,6 +89,37 @@ const EventsSection: React.FC<EventsSectionProps> = ({ creatorId, creatorName, t
       setPaymentStatus('idle');
     }
   });
+
+  // Poll for payment status
+  useEffect(() => {
+    if (paymentStatus !== 'polling' || !recordId) return;
+
+    const pollInterval = setInterval(async () => {
+      const response = await supabase.functions.invoke('check-payment', {
+        body: { recordId, type: 'ticket' }
+      });
+
+      if (response.data?.status === 'completed') {
+        setPaymentStatus('success');
+        clearInterval(pollInterval);
+      } else if (response.data?.status === 'failed') {
+        setPaymentStatus('failed');
+        clearInterval(pollInterval);
+      }
+    }, 3000);
+
+    const timeout = setTimeout(() => {
+      clearInterval(pollInterval);
+      if (paymentStatus === 'polling') {
+        setPaymentStatus('failed');
+      }
+    }, 120000);
+
+    return () => {
+      clearInterval(pollInterval);
+      clearTimeout(timeout);
+    };
+  }, [paymentStatus, recordId]);
 
   const handleBuyTicket = (event: any) => {
     setSelectedEvent(event);

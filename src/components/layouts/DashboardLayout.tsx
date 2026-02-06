@@ -28,7 +28,8 @@ import {
   Globe,
   Gift,
   Megaphone,
-  Handshake
+  Handshake,
+  Ban
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -64,6 +65,7 @@ const adminNavItems: NavItem[] = [
   { label: 'Gifts', href: '/admin/gifts', icon: Gift },
   { label: 'Partners', href: '/admin/partners', icon: Handshake },
   { label: 'Awards & Voting', href: '/admin/awards', icon: Trophy },
+  { label: 'Disabled Accounts', href: '/admin/disabled-accounts', icon: Ban },
   { label: 'Payment Config', href: '/admin/payments', icon: CreditCard },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];

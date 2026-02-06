@@ -23,7 +23,8 @@ serve(async (req) => {
       vote: 'votes',
       gift: 'gifts',
       campaign: 'campaign_contributions',
-      merchandise: 'orders'
+      merchandise: 'orders',
+      ticket: 'ticket_payments'
     };
     
     const table = tableMap[type];
