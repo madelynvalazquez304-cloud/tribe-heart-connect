@@ -20,8 +20,8 @@ serve(async (req) => {
     console.log('M-PESA Callback:', { CheckoutRequestID, ResultCode, ResultDesc });
 
     // Find the record by CheckoutRequestID in all possible tables
-    type TableType = 'donations' | 'votes' | 'gifts' | 'campaign_contributions' | 'orders';
-    const tables: TableType[] = ['donations', 'votes', 'gifts', 'campaign_contributions', 'orders'];
+    type TableType = 'donations' | 'votes' | 'gifts' | 'campaign_contributions' | 'orders' | 'ticket_payments';
+    const tables: TableType[] = ['donations', 'votes', 'gifts', 'campaign_contributions', 'orders', 'ticket_payments'];
     let record: any = null;
     let table: TableType | null = null;
 
@@ -178,6 +178,55 @@ serve(async (req) => {
           reference_type: 'order',
           reference_id: record.id,
           description: `Order from ${record.customer_name}`
+        });
+      } else if (table === 'ticket_payments') {
+        await supabase
+          .from('ticket_payments')
+          .update({
+            status: 'completed',
+            mpesa_receipt: mpesaReceipt
+          })
+          .eq('id', record.id);
+
+        // Create tickets for the purchase
+        const ticketInserts = Array.from({ length: record.quantity }, () => ({
+          ticket_type_id: record.ticket_type_id,
+          buyer_name: record.buyer_name,
+          buyer_phone: record.buyer_phone,
+          buyer_email: record.buyer_email,
+          status: 'valid',
+          payment_reference: mpesaReceipt
+        }));
+
+        await supabase.from('tickets').insert(ticketInserts);
+
+        // Update ticket_type sold count
+        const { data: ticketType } = await supabase
+          .from('ticket_types')
+          .select('quantity_sold')
+          .eq('id', record.ticket_type_id)
+          .single();
+
+        if (ticketType) {
+          await supabase
+            .from('ticket_types')
+            .update({ quantity_sold: (ticketType.quantity_sold || 0) + record.quantity })
+            .eq('id', record.ticket_type_id);
+        }
+
+        // Create transaction record
+        await supabase.from('transactions').insert({
+          creator_id: record.creator_id,
+          type: 'ticket',
+          amount: record.amount,
+          fee: record.platform_fee,
+          net_amount: record.creator_amount,
+          status: 'completed',
+          payment_provider: 'mpesa',
+          payment_reference: mpesaReceipt,
+          reference_type: 'ticket_payment',
+          reference_id: record.id,
+          description: `Ticket purchase from ${record.buyer_name}`
         });
       }
     } else {

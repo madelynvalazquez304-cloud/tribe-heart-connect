@@ -12,12 +12,14 @@ interface STKPushRequest {
   creatorId: string;
   donorName?: string;
   message?: string;
-  type: 'donation' | 'vote' | 'gift' | 'campaign' | 'merchandise';
+  type: 'donation' | 'vote' | 'gift' | 'campaign' | 'merchandise' | 'ticket';
   referenceId?: string;
   giftTypeId?: string;
   quantity?: number;
   campaignId?: string;
   orderId?: string;
+  ticketTypeId?: string;
+  ticketId?: string;
 }
 
 serve(async (req) => {
@@ -31,7 +33,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: STKPushRequest = await req.json();
-    const { phone, amount, creatorId, donorName, message, type, referenceId, giftTypeId, quantity, campaignId, orderId } = body;
+    const { phone, amount, creatorId, donorName, message, type, referenceId, giftTypeId, quantity, campaignId, orderId, ticketTypeId, ticketId } = body;
 
     // Get active M-PESA config
     const { data: config, error: configError } = await supabase
@@ -88,7 +90,7 @@ serve(async (req) => {
 
     // Create pending record based on type
     let recordId: string;
-    const platformFee = type === 'donation' || type === 'gift' || type === 'campaign' 
+    const platformFee = type === 'donation' || type === 'gift' || type === 'campaign' || type === 'ticket'
       ? amount * 0.05 
       : type === 'vote' 
         ? amount * 0.2 
@@ -178,6 +180,27 @@ serve(async (req) => {
 
       if (error) throw error;
       recordId = orderId!;
+    } else if (type === 'ticket') {
+      // Create ticket_payment record
+      const { data: ticketPayment, error } = await supabase
+        .from('ticket_payments')
+        .insert({
+          creator_id: creatorId,
+          ticket_type_id: ticketTypeId,
+          buyer_name: donorName || 'Guest',
+          buyer_phone: formattedPhone,
+          quantity: quantity || 1,
+          amount,
+          platform_fee: platformFee,
+          creator_amount: creatorAmount,
+          payment_provider: 'mpesa',
+          status: 'pending'
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      recordId = ticketPayment.id;
     } else {
       throw new Error('Invalid payment type');
     }
@@ -188,6 +211,7 @@ serve(async (req) => {
       : type === 'vote' ? 'TribeYangu Vote'
       : type === 'gift' ? 'TribeYangu Gift'
       : type === 'campaign' ? 'TribeYangu Campaign'
+      : type === 'ticket' ? 'TribeYangu Ticket'
       : 'TribeYangu Purchase';
     
     const stkPushBody = {
@@ -222,7 +246,8 @@ serve(async (req) => {
         vote: 'votes',
         gift: 'gifts',
         campaign: 'campaign_contributions',
-        merchandise: 'orders'
+        merchandise: 'orders',
+        ticket: 'ticket_payments'
       };
       const table = tableMap[type];
       

@@ -49,6 +49,7 @@ import AdminEvents from "./pages/admin/AdminEvents";
 import AdminCampaigns from "./pages/admin/AdminCampaigns";
 import AdminGifts from "./pages/admin/AdminGifts";
 import AdminPartners from "./pages/admin/AdminPartners";
+import AdminDisabledAccounts from "./pages/admin/AdminDisabledAccounts";
 
 const queryClient = new QueryClient();
 
@@ -148,6 +149,11 @@ const App = () => (
             <Route path="/admin/partners" element={
               <ProtectedRoute requiredRole="admin">
                 <AdminPartners />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/disabled-accounts" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDisabledAccounts />
               </ProtectedRoute>
             } />
 
