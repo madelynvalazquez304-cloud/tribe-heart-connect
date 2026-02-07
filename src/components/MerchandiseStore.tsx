@@ -86,7 +86,7 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
           phone: customerPhone,
           amount: total,
           creatorId,
-          type: 'order',
+          type: 'merchandise',
           orderId: order.id
         }
       });
@@ -100,7 +100,7 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
       
       const pollInterval = setInterval(async () => {
         const response = await supabase.functions.invoke('check-payment', {
-          body: { recordId: data.recordId, type: 'order' }
+          body: { recordId: data.orderId, type: 'merchandise' }
         });
 
         if (response.data?.status === 'completed') {

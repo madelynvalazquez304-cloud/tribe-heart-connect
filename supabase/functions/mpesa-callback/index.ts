@@ -117,6 +117,7 @@ serve(async (req) => {
           description: `Gift from ${record.sender_name || 'Anonymous'}`
         });
       } else if (table === 'campaign_contributions') {
+        // Just update status - the DB trigger handles campaign stats
         await supabase
           .from('campaign_contributions')
           .update({
@@ -125,23 +126,14 @@ serve(async (req) => {
           })
           .eq('id', record.id);
 
-        // Update campaign current_amount and supporter_count
+        // Create transaction record
         const { data: campaign } = await supabase
           .from('campaigns')
-          .select('current_amount, supporter_count, creator_id')
+          .select('creator_id')
           .eq('id', record.campaign_id)
           .single();
 
         if (campaign) {
-          await supabase
-            .from('campaigns')
-            .update({
-              current_amount: (campaign.current_amount || 0) + record.amount,
-              supporter_count: (campaign.supporter_count || 0) + 1
-            })
-            .eq('id', record.campaign_id);
-
-          // Create transaction record
           await supabase.from('transactions').insert({
             creator_id: campaign.creator_id,
             type: 'donation',

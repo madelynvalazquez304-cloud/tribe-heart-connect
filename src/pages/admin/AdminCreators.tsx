@@ -133,9 +133,27 @@ const AdminCreators = () => {
   return (
     <DashboardLayout type="admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Manage Creators</h1>
-          <p className="text-muted-foreground mt-1">Review and manage creator accounts</p>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-foreground">Manage Creators</h1>
+            <p className="text-muted-foreground mt-1">Review and manage creator accounts • Approved creators appear on the Explore page</p>
+          </div>
+          {byStatus('pending').length > 0 && (
+            <Button
+              onClick={async () => {
+                const pendingCreators = byStatus('pending');
+                for (const creator of pendingCreators) {
+                  await updateStatus.mutateAsync({ id: creator.id, status: 'approved' });
+                }
+                toast.success(`${pendingCreators.length} creators approved & added to Explore!`);
+              }}
+              className="gap-2"
+              disabled={updateStatus.isPending}
+            >
+              {updateStatus.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Approve All Pending ({byStatus('pending').length})
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -158,7 +176,7 @@ const AdminCreators = () => {
                 <Badge variant="secondary" className="ml-1">{byStatus('pending').length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="approved">Approved</TabsTrigger>
+            <TabsTrigger value="approved">Approved ({byStatus('approved').length})</TabsTrigger>
             <TabsTrigger value="suspended">Suspended</TabsTrigger>
             <TabsTrigger value="rejected">Rejected</TabsTrigger>
           </TabsList>

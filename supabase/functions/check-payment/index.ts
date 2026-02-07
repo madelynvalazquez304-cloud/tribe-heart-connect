@@ -43,9 +43,15 @@ serve(async (req) => {
 
     if (error) throw error;
 
+    // Normalize status - orders use 'processing' for successful payment
+    let normalizedStatus = data.status;
+    if (type === 'merchandise' && data.status === 'processing') {
+      normalizedStatus = 'completed';
+    }
+
     return new Response(
       JSON.stringify({
-        status: data.status,
+        status: normalizedStatus,
         receipt: data.mpesa_receipt || data.payment_reference
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
