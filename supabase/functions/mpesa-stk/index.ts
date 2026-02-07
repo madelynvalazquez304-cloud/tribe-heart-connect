@@ -117,12 +117,13 @@ serve(async (req) => {
       if (error) throw error;
       recordId = donation.id;
     } else if (type === 'vote') {
+      const voteCount = quantity || Math.max(1, Math.floor(amount / 15));
       const { data: vote, error } = await supabase
         .from('votes')
         .insert({
           nominee_id: referenceId,
           amount_paid: amount,
-          vote_count: Math.floor(amount / 10),
+          vote_count: voteCount,
           voter_phone: formattedPhone,
           payment_provider: 'mpesa',
           platform_fee: platformFee,

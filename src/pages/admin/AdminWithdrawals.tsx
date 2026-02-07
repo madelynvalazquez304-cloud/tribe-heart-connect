@@ -354,11 +354,11 @@ const AdminWithdrawals = () => {
                       <p className="font-medium">KSh {Number(actionDialog.withdrawal?.fee || 0).toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Net Amount</p>
+                      <p className="text-muted-foreground">Net Amount (B2C)</p>
                       <p className="font-semibold text-green-600">KSh {Number(actionDialog.withdrawal?.net_amount).toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Payment To</p>
+                      <p className="text-muted-foreground">Send To</p>
                       <p className="font-medium">
                         {actionDialog.withdrawal?.payment_method === 'mpesa' 
                           ? actionDialog.withdrawal?.creator?.mpesa_phone
@@ -368,13 +368,27 @@ const AdminWithdrawals = () => {
                     </div>
                   </div>
                 </div>
+                
+                {actionDialog.withdrawal?.payment_method === 'mpesa' && (
+                  <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm">
+                    <p className="font-medium text-green-800 mb-1">📱 M-PESA B2C Instructions</p>
+                    <ol className="list-decimal list-inside space-y-1 text-green-700">
+                      <li>Go to M-PESA Business Portal</li>
+                      <li>Initiate B2C payment to <strong>{actionDialog.withdrawal?.creator?.mpesa_phone}</strong></li>
+                      <li>Amount: <strong>KSh {Number(actionDialog.withdrawal?.net_amount).toLocaleString()}</strong></li>
+                      <li>Enter the MPESA receipt below after payment</li>
+                    </ol>
+                  </div>
+                )}
+                
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Transaction Reference (optional)</label>
+                  <label className="text-sm font-medium">M-PESA Transaction Reference *</label>
                   <Input
-                    placeholder="e.g., MPESA transaction ID"
+                    placeholder="e.g., SGJK2L5M7N - from M-PESA confirmation"
                     value={reference}
                     onChange={(e) => setReference(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">Enter the M-PESA receipt number after completing the B2C transfer</p>
                 </div>
               </div>
             )}

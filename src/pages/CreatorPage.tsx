@@ -14,9 +14,8 @@ import ProfileLoadingSpinner from '@/components/ProfileLoadingSpinner';
 import CampaignSection from '@/components/CampaignSection';
 import MerchandiseStore from '@/components/MerchandiseStore';
 import EventsSection from '@/components/EventsSection';
+import CreatorAwardsSection from '@/components/CreatorAwardsSection';
 import PaymentProcessingModal, { PaymentStatus } from '@/components/PaymentProcessingModal';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import NotFound from './NotFound';
 import { toast } from 'sonner';
 
@@ -177,13 +176,9 @@ const CreatorPage = () => {
 
   if (isLoading) {
     return (
-      <>
-        <Header />
-        <div className="min-h-screen pt-20">
-          <ProfileLoadingSpinner color={undefined} />
-        </div>
-        <Footer />
-      </>
+      <div className="min-h-screen flex items-center justify-center">
+        <ProfileLoadingSpinner color={undefined} />
+      </div>
     );
   }
 
@@ -202,9 +197,8 @@ const CreatorPage = () => {
 
   return (
     <div style={themeStyles}>
-      <Header />
       <GiftAnimationOverlay creatorId={creator.id} />
-      <main className="min-h-screen pt-16">
+      <main className="min-h-screen">
         {/* Banner with floating action icons */}
         <div className="relative h-48 md:h-64 overflow-hidden">
           {creator.banner_url ? (
@@ -325,6 +319,13 @@ const CreatorPage = () => {
                   ))}
                 </div>
               )}
+
+              {/* Awards & Nominations */}
+              <CreatorAwardsSection
+                creatorId={creator.id}
+                creatorName={creator.display_name}
+                themeColor={themeColor}
+              />
 
               {/* Events Section */}
               <EventsSection 
@@ -455,7 +456,6 @@ const CreatorPage = () => {
           </div>
         </div>
       </main>
-      <Footer />
 
       {/* Payment Processing Modal */}
       <PaymentProcessingModal
