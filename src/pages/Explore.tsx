@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Users, Heart, Loader2, Filter } from 'lucide-react';
+import { Search, Users, Heart, Loader2, Star, TrendingUp, Sparkles } from 'lucide-react';
 
 const Explore = () => {
   const [search, setSearch] = useState('');
@@ -37,6 +37,7 @@ const Explore = () => {
           category:creator_categories(name, icon)
         `)
         .eq('status', 'approved')
+        .eq('is_featured', true)
         .order('total_raised', { ascending: false });
 
       if (selectedCategory) {
@@ -62,6 +63,10 @@ const Explore = () => {
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+              <Sparkles className="w-4 h-4" />
+              Featured Creators
+            </div>
             <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
               Explore Creators
             </h1>
@@ -116,8 +121,8 @@ const Explore = () => {
           ) : filteredCreators?.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Users className="w-16 h-16 mx-auto mb-4 opacity-20" />
-              <p className="text-lg">No creators found</p>
-              <p className="text-sm">Try adjusting your search or filters</p>
+              <p className="text-lg">No featured creators found</p>
+              <p className="text-sm">Check back soon for new creators!</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -133,6 +138,13 @@ const Explore = () => {
                           className="w-full h-full object-cover"
                         />
                       )}
+                      {/* Featured badge */}
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-primary/90 text-primary-foreground gap-1 text-xs">
+                          <Star className="w-3 h-3" fill="currentColor" />
+                          Featured
+                        </Badge>
+                      </div>
                     </div>
 
                     <CardContent className="pt-0 -mt-8 relative">
@@ -166,7 +178,7 @@ const Explore = () => {
 
                       {creator.category && (
                         <Badge variant="secondary" className="mb-2 text-xs">
-                          {creator.category.icon} {creator.category.name}
+                          {(creator.category as any).icon} {(creator.category as any).name}
                         </Badge>
                       )}
 

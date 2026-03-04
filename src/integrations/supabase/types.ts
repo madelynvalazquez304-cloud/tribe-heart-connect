@@ -359,6 +359,7 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          is_featured: boolean | null
           is_partner: boolean | null
           is_verified: boolean | null
           kyc_verified: boolean | null
@@ -369,6 +370,7 @@ export type Database = {
           referred_by: string | null
           rejection_reason: string | null
           status: Database["public"]["Enums"]["creator_status"]
+          store_enabled: boolean | null
           suspension_reason: string | null
           theme_accent: string | null
           theme_primary: string | null
@@ -391,6 +393,7 @@ export type Database = {
           created_at?: string
           display_name: string
           id?: string
+          is_featured?: boolean | null
           is_partner?: boolean | null
           is_verified?: boolean | null
           kyc_verified?: boolean | null
@@ -401,6 +404,7 @@ export type Database = {
           referred_by?: string | null
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["creator_status"]
+          store_enabled?: boolean | null
           suspension_reason?: string | null
           theme_accent?: string | null
           theme_primary?: string | null
@@ -423,6 +427,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          is_featured?: boolean | null
           is_partner?: boolean | null
           is_verified?: boolean | null
           kyc_verified?: boolean | null
@@ -433,6 +438,7 @@ export type Database = {
           referred_by?: string | null
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["creator_status"]
+          store_enabled?: boolean | null
           suspension_reason?: string | null
           theme_accent?: string | null
           theme_primary?: string | null

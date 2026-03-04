@@ -2,29 +2,20 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Check, X, Eye, Ban, RefreshCw, Loader2, ExternalLink } from 'lucide-react';
+import { Search, Check, X, Eye, Ban, RefreshCw, Loader2, ExternalLink, Star, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -42,12 +33,8 @@ const AdminCreators = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('creators')
-        .select(`
-          *,
-          category:creator_categories(name)
-        `)
+        .select(`*, category:creator_categories(name)`)
         .order('created_at', { ascending: false });
-      
       if (error) throw error;
       return data;
     }
@@ -59,21 +46,14 @@ const AdminCreators = () => {
       if (status === 'approved' && reason !== 'unsuspend') {
         updates.approved_at = new Date().toISOString();
         updates.suspension_reason = null;
-      } else if (status === 'approved' && reason === 'unsuspend') {
+      } else if (status === 'approved') {
         updates.suspension_reason = null;
       } else if (status === 'rejected') {
         updates.rejection_reason = reason;
       } else if (status === 'suspended') {
         updates.suspension_reason = reason;
-      } else if (status === 'approved' && reason === 'unsuspend') {
-        updates.suspension_reason = null;
       }
-
-      const { error } = await supabase
-        .from('creators')
-        .update(updates)
-        .eq('id', id);
-      
+      const { error } = await supabase.from('creators').update(updates).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -82,9 +62,31 @@ const AdminCreators = () => {
       setActionDialog({ type: null, creator: null });
       setReason('');
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    }
+    onError: (error: Error) => toast.error(error.message)
+  });
+
+  const toggleFeatured = useMutation({
+    mutationFn: async ({ id, is_featured }: { id: string; is_featured: boolean }) => {
+      const { error } = await supabase.from('creators').update({ is_featured }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-creators'] });
+      toast.success('Explore visibility updated');
+    },
+    onError: (error: Error) => toast.error(error.message)
+  });
+
+  const toggleStore = useMutation({
+    mutationFn: async ({ id, store_enabled }: { id: string; store_enabled: boolean }) => {
+      const { error } = await supabase.from('creators').update({ store_enabled }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-creators'] });
+      toast.success('Store access updated');
+    },
+    onError: (error: Error) => toast.error(error.message)
   });
 
   const filteredCreators = creators?.filter(c =>
@@ -104,23 +106,13 @@ const AdminCreators = () => {
 
   const handleAction = async () => {
     if (!actionDialog.creator) return;
-    
     let newStatus: CreatorStatus;
     switch (actionDialog.type) {
-      case 'approve':
-      case 'unsuspend':
-        newStatus = 'approved';
-        break;
-      case 'reject':
-        newStatus = 'rejected';
-        break;
-      case 'suspend':
-        newStatus = 'suspended';
-        break;
-      default:
-        return;
+      case 'approve': case 'unsuspend': newStatus = 'approved'; break;
+      case 'reject': newStatus = 'rejected'; break;
+      case 'suspend': newStatus = 'suspended'; break;
+      default: return;
     }
-
     await updateStatus.mutateAsync({
       id: actionDialog.creator.id,
       status: newStatus,
@@ -136,16 +128,18 @@ const AdminCreators = () => {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Manage Creators</h1>
-            <p className="text-muted-foreground mt-1">Review and manage creator accounts • Approved creators appear on the Explore page</p>
+            <p className="text-muted-foreground mt-1">
+              Toggle <Star className="w-4 h-4 inline text-amber-500" /> to feature creators on the Explore page
+            </p>
           </div>
           {byStatus('pending').length > 0 && (
             <Button
               onClick={async () => {
-                const pendingCreators = byStatus('pending');
-                for (const creator of pendingCreators) {
-                  await updateStatus.mutateAsync({ id: creator.id, status: 'approved' });
+                const pending = byStatus('pending');
+                for (const c of pending) {
+                  await updateStatus.mutateAsync({ id: c.id, status: 'approved' });
                 }
-                toast.success(`${pendingCreators.length} creators approved & added to Explore!`);
+                toast.success(`${pending.length} creators approved!`);
               }}
               className="gap-2"
               disabled={updateStatus.isPending}
@@ -156,25 +150,15 @@ const AdminCreators = () => {
           )}
         </div>
 
-        {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search creators..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+          <Input placeholder="Search creators..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="pending" className="space-y-4">
+        <Tabs defaultValue="approved" className="space-y-4">
           <TabsList>
             <TabsTrigger value="pending" className="gap-2">
-              Pending
-              {byStatus('pending').length > 0 && (
-                <Badge variant="secondary" className="ml-1">{byStatus('pending').length}</Badge>
-              )}
+              Pending {byStatus('pending').length > 0 && <Badge variant="secondary" className="ml-1">{byStatus('pending').length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="approved">Approved ({byStatus('approved').length})</TabsTrigger>
             <TabsTrigger value="suspended">Suspended</TabsTrigger>
@@ -186,13 +170,9 @@ const AdminCreators = () => {
               <Card>
                 <CardContent className="p-0">
                   {isLoading ? (
-                    <div className="flex items-center justify-center h-32">
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                    </div>
+                    <div className="flex items-center justify-center h-32"><Loader2 className="w-6 h-6 animate-spin" /></div>
                   ) : byStatus(status).length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      No {status} creators
-                    </div>
+                    <div className="text-center py-12 text-muted-foreground">No {status} creators</div>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -201,6 +181,8 @@ const AdminCreators = () => {
                           <TableHead>Category</TableHead>
                           <TableHead>Joined</TableHead>
                           <TableHead>Stats</TableHead>
+                          {status === 'approved' && <TableHead className="text-center">Explore</TableHead>}
+                          {status === 'approved' && <TableHead className="text-center">Store</TableHead>}
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -214,81 +196,65 @@ const AdminCreators = () => {
                                   {creator.avatar_url ? (
                                     <img src={creator.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
                                   ) : (
-                                    <span className="text-sm font-medium text-primary">
-                                      {creator.display_name.charAt(0)}
-                                    </span>
+                                    <span className="text-sm font-medium text-primary">{creator.display_name.charAt(0)}</span>
                                   )}
                                 </div>
                                 <div>
-                                  <p className="font-medium">{creator.display_name}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-medium">{creator.display_name}</p>
+                                    {creator.is_featured && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+                                  </div>
                                   <p className="text-sm text-muted-foreground">@{creator.username}</p>
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              {creator.category?.name || '-'}
-                            </TableCell>
-                            <TableCell>
-                              {format(new Date(creator.created_at), 'MMM d, yyyy')}
-                            </TableCell>
+                            <TableCell>{creator.category?.name || '-'}</TableCell>
+                            <TableCell>{format(new Date(creator.created_at), 'MMM d, yyyy')}</TableCell>
                             <TableCell>
                               <div className="text-sm">
                                 <p>{creator.total_supporters} supporters</p>
-                                <p className="text-muted-foreground">KSh {Number(creator.total_raised).toLocaleString()} raised</p>
+                                <p className="text-muted-foreground">KSh {Number(creator.total_raised).toLocaleString()}</p>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              {getStatusBadge(creator.status)}
-                            </TableCell>
+                            {status === 'approved' && (
+                              <TableCell className="text-center">
+                                <Switch
+                                  checked={creator.is_featured || false}
+                                  onCheckedChange={(checked) => toggleFeatured.mutate({ id: creator.id, is_featured: checked })}
+                                />
+                              </TableCell>
+                            )}
+                            {status === 'approved' && (
+                              <TableCell className="text-center">
+                                <Switch
+                                  checked={creator.store_enabled !== false}
+                                  onCheckedChange={(checked) => toggleStore.mutate({ id: creator.id, store_enabled: checked })}
+                                />
+                              </TableCell>
+                            )}
+                            <TableCell>{getStatusBadge(creator.status)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setSelectedCreator(creator)}
-                                >
+                                <Button variant="ghost" size="icon" onClick={() => setSelectedCreator(creator)}>
                                   <Eye className="w-4 h-4" />
                                 </Button>
-                                
                                 {status === 'pending' && (
                                   <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                      onClick={() => setActionDialog({ type: 'approve', creator })}
-                                    >
+                                    <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => setActionDialog({ type: 'approve', creator })}>
                                       <Check className="w-4 h-4" />
                                     </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                      onClick={() => setActionDialog({ type: 'reject', creator })}
-                                    >
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setActionDialog({ type: 'reject', creator })}>
                                       <X className="w-4 h-4" />
                                     </Button>
                                   </>
                                 )}
-                                
                                 {status === 'approved' && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                    onClick={() => setActionDialog({ type: 'suspend', creator })}
-                                  >
+                                  <Button variant="ghost" size="icon" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50" onClick={() => setActionDialog({ type: 'suspend', creator })}>
                                     <Ban className="w-4 h-4" />
                                   </Button>
                                 )}
-                                
                                 {status === 'suspended' && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                    onClick={() => setActionDialog({ type: 'unsuspend', creator })}
-                                  >
+                                  <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => setActionDialog({ type: 'unsuspend', creator })}>
                                     <RefreshCw className="w-4 h-4" />
                                   </Button>
                                 )}
@@ -316,28 +282,20 @@ const AdminCreators = () => {
                 {actionDialog.type === 'unsuspend' && 'Unsuspend Creator'}
               </DialogTitle>
               <DialogDescription>
-                {actionDialog.type === 'approve' && `Approve ${actionDialog.creator?.display_name} as a creator?`}
-                {actionDialog.type === 'reject' && `Reject ${actionDialog.creator?.display_name}'s creator application?`}
-                {actionDialog.type === 'suspend' && `Suspend ${actionDialog.creator?.display_name}'s account?`}
-                {actionDialog.type === 'unsuspend' && `Restore ${actionDialog.creator?.display_name}'s account?`}
+                {actionDialog.type === 'approve' && `Approve ${actionDialog.creator?.display_name}?`}
+                {actionDialog.type === 'reject' && `Reject ${actionDialog.creator?.display_name}?`}
+                {actionDialog.type === 'suspend' && `Suspend ${actionDialog.creator?.display_name}?`}
+                {actionDialog.type === 'unsuspend' && `Restore ${actionDialog.creator?.display_name}?`}
               </DialogDescription>
             </DialogHeader>
-            
             {(actionDialog.type === 'reject' || actionDialog.type === 'suspend') && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Reason</label>
-                <Textarea
-                  placeholder="Provide a reason..."
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                />
+                <Textarea placeholder="Provide a reason..." value={reason} onChange={(e) => setReason(e.target.value)} />
               </div>
             )}
-
             <DialogFooter>
-              <Button variant="outline" onClick={() => setActionDialog({ type: null, creator: null })}>
-                Cancel
-              </Button>
+              <Button variant="outline" onClick={() => setActionDialog({ type: null, creator: null })}>Cancel</Button>
               <Button
                 variant={actionDialog.type === 'approve' || actionDialog.type === 'unsuspend' ? 'default' : 'destructive'}
                 onClick={handleAction}
@@ -353,10 +311,7 @@ const AdminCreators = () => {
         {/* View Creator Dialog */}
         <Dialog open={!!selectedCreator} onOpenChange={() => setSelectedCreator(null)}>
           <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Creator Details</DialogTitle>
-            </DialogHeader>
-            
+            <DialogHeader><DialogTitle>Creator Details</DialogTitle></DialogHeader>
             {selectedCreator && (
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
@@ -364,9 +319,7 @@ const AdminCreators = () => {
                     {selectedCreator.avatar_url ? (
                       <img src={selectedCreator.avatar_url} alt="" className="w-16 h-16 rounded-xl object-cover" />
                     ) : (
-                      <span className="text-xl font-medium text-primary">
-                        {selectedCreator.display_name.charAt(0)}
-                      </span>
+                      <span className="text-xl font-medium text-primary">{selectedCreator.display_name.charAt(0)}</span>
                     )}
                   </div>
                   <div className="flex-1">
@@ -374,23 +327,14 @@ const AdminCreators = () => {
                     <p className="text-muted-foreground">@{selectedCreator.username}</p>
                     <div className="flex items-center gap-2 mt-2">
                       {getStatusBadge(selectedCreator.status)}
-                      {selectedCreator.is_verified && (
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">Verified</Badge>
-                      )}
+                      {selectedCreator.is_verified && <Badge variant="secondary" className="bg-blue-100 text-blue-700">Verified</Badge>}
+                      {selectedCreator.is_featured && <Badge className="bg-amber-100 text-amber-700 gap-1"><Star className="w-3 h-3" />Featured</Badge>}
                     </div>
                   </div>
-                  <a
-                    href={`/${selectedCreator.username}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <ExternalLink className="w-4 h-4" />
-                      View Page
-                    </Button>
+                  <a href={`/${selectedCreator.username}`} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="sm" className="gap-2"><ExternalLink className="w-4 h-4" />View Page</Button>
                   </a>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 rounded-lg bg-secondary/50">
                     <p className="text-sm text-muted-foreground">Tribe Name</p>
@@ -405,18 +349,16 @@ const AdminCreators = () => {
                     <p className="font-medium">{selectedCreator.mpesa_phone || '-'}</p>
                   </div>
                   <div className="p-4 rounded-lg bg-secondary/50">
-                    <p className="text-sm text-muted-foreground">PayPal Email</p>
-                    <p className="font-medium">{selectedCreator.paypal_email || '-'}</p>
+                    <p className="text-sm text-muted-foreground">Store Enabled</p>
+                    <p className="font-medium">{selectedCreator.store_enabled !== false ? '✅ Yes' : '❌ No'}</p>
                   </div>
                 </div>
-
                 {selectedCreator.bio && (
                   <div className="p-4 rounded-lg bg-secondary/50">
                     <p className="text-sm text-muted-foreground mb-1">Bio</p>
                     <p>{selectedCreator.bio}</p>
                   </div>
                 )}
-
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-4 rounded-lg bg-primary/5">
                     <p className="text-2xl font-bold text-primary">{selectedCreator.total_supporters}</p>
@@ -431,14 +373,12 @@ const AdminCreators = () => {
                     <p className="text-sm text-muted-foreground">Votes</p>
                   </div>
                 </div>
-
                 {selectedCreator.rejection_reason && (
                   <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
                     <p className="text-sm font-medium text-destructive">Rejection Reason</p>
                     <p className="text-sm text-destructive/80 mt-1">{selectedCreator.rejection_reason}</p>
                   </div>
                 )}
-
                 {selectedCreator.suspension_reason && (
                   <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
                     <p className="text-sm font-medium text-amber-600">Suspension Reason</p>
