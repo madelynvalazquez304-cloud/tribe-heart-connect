@@ -172,7 +172,7 @@ const BecomeCreator = () => {
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Your page will be: {window.location.origin}/@{formData.username || 'yourname'}
+                  Your page will be: tribeyangu.com/{formData.username || 'yourname'}
                 </p>
               </div>
 
