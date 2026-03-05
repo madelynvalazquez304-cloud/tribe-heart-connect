@@ -200,6 +200,7 @@ const CreatorsShowcase = () => {
         .from('creators')
         .select(`*, category:creator_categories(name)`)
         .eq('status', 'approved')
+        .eq('is_featured', true)
         .order('total_supporters', { ascending: false })
         .limit(6);
       if (error) throw error;
