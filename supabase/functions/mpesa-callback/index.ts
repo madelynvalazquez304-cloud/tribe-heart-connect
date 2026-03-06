@@ -76,10 +76,9 @@ serve(async (req) => {
         await supabase.from('votes').update({ status: 'confirmed', mpesa_receipt: mpesaReceipt }).eq('id', record.id);
         // Trigger update_nominee_votes fires automatically
 
-        // Create transaction for vote
         const { data: nominee } = await supabase.from('award_nominees').select('creator_id').eq('id', record.nominee_id).single();
         if (nominee) {
-          const voteFee = record.amount_paid * 0.05;
+          const voteFee = record.platform_fee || record.amount_paid * 0.05;
           const voteNet = record.amount_paid - voteFee;
           await supabase.from('transactions').insert({
             creator_id: nominee.creator_id,
@@ -92,7 +91,7 @@ serve(async (req) => {
             payment_reference: mpesaReceipt,
             reference_type: 'vote',
             reference_id: record.id,
-            description: `${record.vote_count || 1} vote(s) from ${record.voter_phone || 'Anonymous'}`
+            description: `${record.vote_count || 1} vote(s)`
           });
         }
 
@@ -115,7 +114,7 @@ serve(async (req) => {
         });
 
       } else if (table === 'campaign_contributions') {
-        // Just update status — trigger update_campaign_stats handles current_amount + supporter_count
+        // ONLY update status — trigger update_campaign_stats handles current_amount + supporter_count
         await supabase.from('campaign_contributions').update({ status: 'completed', mpesa_receipt: mpesaReceipt }).eq('id', record.id);
 
         const { data: campaign } = await supabase.from('campaigns').select('creator_id').eq('id', record.campaign_id).single();
