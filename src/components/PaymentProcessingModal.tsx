@@ -11,7 +11,7 @@ interface PaymentProcessingModalProps {
   open?: boolean;
   onClose: () => void;
   status: PaymentStatus;
-  type: 'donation' | 'gift' | 'campaign' | 'purchase' | 'ticket';
+  type: 'donation' | 'gift' | 'campaign' | 'purchase' | 'ticket' | 'vote';
   creatorName?: string;
   amount?: number;
   giftIcon?: string;
