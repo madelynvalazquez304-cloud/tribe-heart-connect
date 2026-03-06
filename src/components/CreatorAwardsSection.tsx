@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Trophy, Crown, Medal, Star, Vote, Loader2, Phone, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
+import { Trophy, Crown, Medal, Star, Vote, Loader2, Phone, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import PaymentProcessingModal, { PaymentStatus } from './PaymentProcessingModal';
 
@@ -23,7 +23,6 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
   const [recordId, setRecordId] = useState('');
 
-  // Fetch nominations for this creator
   const { data: nominations, isLoading } = useQuery({
     queryKey: ['creator-nominations', creatorId],
     queryFn: async () => {
@@ -36,17 +35,21 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
         .eq('creator_id', creatorId);
       
       if (error) throw error;
-      return data?.filter(n => n.award?.is_active) || [];
+      // Filter: only show active awards that haven't ended
+      const now = new Date();
+      return (data || []).filter(n => {
+        if (!n.award?.is_active) return false;
+        const end = n.award.voting_ends_at ? new Date(n.award.voting_ends_at) : null;
+        if (end && now > end) return false; // Hide ended awards
+        return true;
+      });
     },
     enabled: !!creatorId
   });
 
   const castVote = useMutation({
     mutationFn: async () => {
-      if (!selectedNominee || !voterPhone) {
-        throw new Error('Phone number is required');
-      }
-
+      if (!selectedNominee || !voterPhone) throw new Error('Phone number is required');
       const votes = parseInt(voteCount) || 1;
       const fee = selectedNominee.award?.vote_fee || 15;
       const totalAmount = votes * fee;
@@ -77,10 +80,7 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
   });
 
   const handleVote = () => {
-    if (!voterPhone) {
-      toast.error('Phone number is required');
-      return;
-    }
+    if (!voterPhone) { toast.error('Phone number is required'); return; }
     setPaymentStatus('processing');
     castVote.mutate();
   };
@@ -99,7 +99,6 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
     const end = award.voting_ends_at ? new Date(award.voting_ends_at) : null;
     if (!start || !end) return { status: 'open', label: 'Open', canVote: true };
     if (now < start) return { status: 'upcoming', label: 'Coming Soon', canVote: false };
-    if (now > end) return { status: 'ended', label: 'Ended', canVote: false };
     return { status: 'live', label: '🔴 Live', canVote: true };
   };
 
@@ -144,7 +143,7 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
                         <div className="flex items-center gap-2 mt-1">
                           <Badge 
                             variant={votingStatus.status === 'live' ? 'default' : 'outline'}
-                            className={votingStatus.status === 'live' ? 'bg-red-600 text-white' : votingStatus.status === 'ended' ? '' : 'text-amber-600 border-amber-600'}
+                            className={votingStatus.status === 'live' ? 'bg-red-600 text-white' : 'text-amber-600 border-amber-600'}
                           >
                             {votingStatus.label}
                           </Badge>
@@ -198,7 +197,6 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
               </DialogHeader>
 
               <div className="space-y-4">
-                {/* Current votes */}
                 <div className="p-3 rounded-lg bg-secondary/50 text-center">
                   <p className="text-sm text-muted-foreground">Current Votes</p>
                   <p className="text-2xl font-bold" style={{ color: themeColor }}>
@@ -206,7 +204,6 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
                   </p>
                 </div>
 
-                {/* Vote count */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Number of Votes</label>
                   <div className="grid grid-cols-4 gap-2">
@@ -230,7 +227,6 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
                   />
                 </div>
 
-                {/* Total */}
                 <div className="p-3 rounded-lg border-2 flex justify-between items-center" style={{ borderColor: themeColor }}>
                   <div>
                     <p className="text-sm text-muted-foreground">{votes} vote{votes > 1 ? 's' : ''}</p>
@@ -241,7 +237,6 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
                   </span>
                 </div>
 
-                {/* Phone */}
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -272,12 +267,11 @@ const CreatorAwardsSection: React.FC<CreatorAwardsSectionProps> = ({ creatorId, 
         </DialogContent>
       </Dialog>
 
-      {/* Payment Processing */}
       <PaymentProcessingModal
         isOpen={paymentStatus !== 'idle'}
         status={paymentStatus}
         recordId={recordId}
-        type="donation"
+        type="vote"
         themeColor={themeColor}
         amount={totalAmount}
         onComplete={(success) => setPaymentStatus(success ? 'success' : 'failed')}
