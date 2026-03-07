@@ -14,6 +14,7 @@ import Explore from "./pages/Explore";
 import CreatorPage from "./pages/CreatorPage";
 import NotFound from "./pages/NotFound";
 import VotingPage from "./pages/VotingPage";
+import ResetPassword from "./pages/ResetPassword";
 import UserDashboard from "./pages/UserDashboard";
 import BecomeCreator from "./pages/BecomeCreator";
 
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/explore" element={<Explore />} />
             <Route path="/vote" element={<VotingPage />} />
             <Route path="/vote/:slug" element={<VotingPage />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/become-creator" element={
               <ProtectedRoute>
                 <BecomeCreator />
