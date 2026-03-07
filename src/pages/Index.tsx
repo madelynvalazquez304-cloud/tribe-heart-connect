@@ -176,11 +176,8 @@ const CreatorsShowcase = () => {
     }
   });
 
-  const displayCreators = creators?.length ? creators : [
-    { username: 'amaraokonkwo', display_name: 'Amara Okonkwo', tribe_name: 'The Music Collective', total_supporters: 2500, avatar_url: creator1, category: { name: 'Musician' } },
-    { username: 'kofimensah', display_name: 'Kofi Mensah', tribe_name: 'Tech Talk Kenya', total_supporters: 4200, avatar_url: creator2, category: { name: 'Content Creator' } },
-    { username: 'zurindegwa', display_name: 'Zuri Ndegwa', tribe_name: 'Art & Soul', total_supporters: 1800, avatar_url: creator3, category: { name: 'Visual Artist' } },
-  ];
+  // Only show real featured creators — no demo fallback
+  const displayCreators = creators || [];
 
   return (
     <section className="py-24">
