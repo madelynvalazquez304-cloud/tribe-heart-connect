@@ -75,6 +75,7 @@ const App = () => (
             <Route path="/vote" element={<VotingPage />} />
             <Route path="/vote/:slug" element={<VotingPage />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/become-creator" element={
               <ProtectedRoute>
                 <BecomeCreator />
