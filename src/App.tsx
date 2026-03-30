@@ -17,6 +17,7 @@ import VotingPage from "./pages/VotingPage";
 import ResetPassword from "./pages/ResetPassword";
 import UserDashboard from "./pages/UserDashboard";
 import BecomeCreator from "./pages/BecomeCreator";
+import Contact from "./pages/Contact";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
