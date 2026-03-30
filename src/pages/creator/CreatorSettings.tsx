@@ -1,21 +1,57 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMyCreator } from '@/hooks/useCreator';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, Phone, Mail } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Save, Phone, Mail, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CreatorSettings = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { data: creator } = useMyCreator();
   const [formData, setFormData] = useState({
     mpesa_phone: creator?.mpesa_phone || '',
     paypal_email: creator?.paypal_email || ''
+  });
+
+  // 2FA settings
+  const { data: twoFaSettings } = useQuery({
+    queryKey: ['2fa-settings', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase.from('user_2fa_settings').select('*').eq('user_id', user.id).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user
+  });
+
+  // Check if admin enabled 2FA
+  const { data: platformSettings } = useQuery({
+    queryKey: ['platform-2fa-config'],
+    queryFn: async () => {
+      const { data } = await supabase.from('platform_settings').select('key, value').in('key', ['2fa_enabled', '2fa_methods']);
+      const map: Record<string, any> = {};
+      data?.forEach(r => { map[r.key] = r.value; });
+      return map;
+    }
+  });
+
+  const is2faAllowed = platformSettings?.['2fa_enabled'] === true || platformSettings?.['2fa_enabled'] === 'true';
+  const allowedMethods = platformSettings?.['2fa_methods'] || 'both';
+
+  const [twoFa, setTwoFa] = useState({
+    is_enabled: false,
+    method: 'sms' as string,
+    phone: '',
+    email: ''
   });
 
   React.useEffect(() => {
@@ -27,6 +63,17 @@ const CreatorSettings = () => {
     }
   }, [creator]);
 
+  React.useEffect(() => {
+    if (twoFaSettings) {
+      setTwoFa({
+        is_enabled: twoFaSettings.is_enabled || false,
+        method: twoFaSettings.method || 'sms',
+        phone: twoFaSettings.phone || '',
+        email: twoFaSettings.email || ''
+      });
+    }
+  }, [twoFaSettings]);
+
   const updateCreator = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!creator) throw new Error('No creator');
@@ -37,9 +84,23 @@ const CreatorSettings = () => {
       queryClient.invalidateQueries({ queryKey: ['my-creator'] });
       toast.success('Settings updated!');
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    }
+    onError: (error: Error) => toast.error(error.message)
+  });
+
+  const update2fa = useMutation({
+    mutationFn: async (data: typeof twoFa) => {
+      if (!user) throw new Error('No user');
+      const { error } = await supabase.from('user_2fa_settings').upsert({
+        user_id: user.id,
+        ...data
+      }, { onConflict: 'user_id' });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['2fa-settings'] });
+      toast.success('2FA settings updated!');
+    },
+    onError: (error: Error) => toast.error(error.message)
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -52,7 +113,7 @@ const CreatorSettings = () => {
       <div className="space-y-6">
         <div>
           <h1 className="font-display text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground mt-1">Manage your payment and account settings</p>
+          <p className="text-muted-foreground mt-1">Manage your payment and security settings</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -67,24 +128,12 @@ const CreatorSettings = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="mpesa_phone">M-PESA Phone Number</Label>
-                <Input
-                  id="mpesa_phone"
-                  value={formData.mpesa_phone}
-                  onChange={(e) => setFormData({ ...formData, mpesa_phone: e.target.value })}
-                  placeholder="254712345678"
-                />
+                <Input id="mpesa_phone" value={formData.mpesa_phone} onChange={(e) => setFormData({ ...formData, mpesa_phone: e.target.value })} placeholder="254712345678" />
                 <p className="text-xs text-muted-foreground">Used for receiving withdrawals</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="paypal_email">PayPal Email (Optional)</Label>
-                <Input
-                  id="paypal_email"
-                  type="email"
-                  value={formData.paypal_email}
-                  onChange={(e) => setFormData({ ...formData, paypal_email: e.target.value })}
-                  placeholder="you@example.com"
-                />
-                <p className="text-xs text-muted-foreground">Alternative payment method</p>
+                <Input id="paypal_email" type="email" value={formData.paypal_email} onChange={(e) => setFormData({ ...formData, paypal_email: e.target.value })} placeholder="you@example.com" />
               </div>
             </CardContent>
           </Card>
@@ -96,6 +145,63 @@ const CreatorSettings = () => {
             </Button>
           </div>
         </form>
+
+        {/* 2FA Section */}
+        {is2faAllowed && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                Two-Factor Authentication
+              </CardTitle>
+              <CardDescription>Add an extra layer of security to your account</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-foreground">Enable 2FA</p>
+                  <p className="text-sm text-muted-foreground">Require a verification code when signing in</p>
+                </div>
+                <Switch checked={twoFa.is_enabled} onCheckedChange={(checked) => setTwoFa({ ...twoFa, is_enabled: checked })} />
+              </div>
+
+              {twoFa.is_enabled && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Verification Method</Label>
+                    <select
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={twoFa.method}
+                      onChange={(e) => setTwoFa({ ...twoFa, method: e.target.value })}
+                    >
+                      {(allowedMethods === 'both' || allowedMethods === 'sms') && <option value="sms">SMS</option>}
+                      {(allowedMethods === 'both' || allowedMethods === 'email') && <option value="email">Email</option>}
+                    </select>
+                  </div>
+
+                  {twoFa.method === 'sms' && (
+                    <div className="space-y-2">
+                      <Label>Phone Number</Label>
+                      <Input value={twoFa.phone} onChange={(e) => setTwoFa({ ...twoFa, phone: e.target.value })} placeholder="254712345678" />
+                    </div>
+                  )}
+
+                  {twoFa.method === 'email' && (
+                    <div className="space-y-2">
+                      <Label>Email Address</Label>
+                      <Input type="email" value={twoFa.email} onChange={(e) => setTwoFa({ ...twoFa, email: e.target.value })} placeholder="you@example.com" />
+                    </div>
+                  )}
+                </>
+              )}
+
+              <Button onClick={() => update2fa.mutate(twoFa)} disabled={update2fa.isPending} className="gap-2">
+                {update2fa.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Save 2FA Settings
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
