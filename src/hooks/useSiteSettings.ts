@@ -6,6 +6,8 @@ export interface SiteSettings {
   site_tagline: string;
   site_logo_url: string;
   contact_email: string;
+  contact_phone: string;
+  contact_address: string;
   copyright_text: string;
   footer_description: string;
   social_twitter: string;
@@ -18,7 +20,9 @@ const defaults: SiteSettings = {
   site_tagline: 'Turning fans into family',
   site_logo_url: '',
   contact_email: 'hello@tribeyangu.com',
-  copyright_text: '© 2024 TribeYangu. Made with ❤️ for African creators.',
+  contact_phone: '',
+  contact_address: '',
+  copyright_text: '© 2025 TribeYangu. Made with ❤️ for African creators.',
   footer_description: 'Turning fans into family and support into impact. Empowering African creators to build sustainable communities.',
   social_twitter: '',
   social_instagram: '',

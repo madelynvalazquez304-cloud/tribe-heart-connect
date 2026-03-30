@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, Percent, DollarSign, Wallet, Truck, AlertCircle, Globe, Image, Upload, Trash2 } from 'lucide-react';
+import { Loader2, Save, Percent, DollarSign, Wallet, Truck, AlertCircle, Globe, Image, Upload, Trash2, Mail, Shield, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 
@@ -339,6 +339,114 @@ const AdminSettings = () => {
                 <div className="space-y-2">
                   <Label>Level 3 %</Label>
                   <Input type="number" step="0.5" value={settings.referral_level_3_percent || 1} onChange={(e) => handleChange('referral_level_3_percent', parseFloat(e.target.value))} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* SMTP Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-primary" />
+                SMTP Email Configuration
+              </CardTitle>
+              <CardDescription>Configure SMTP for sending emails (password reset, notifications)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>SMTP Host</Label>
+                  <Input value={settings.smtp_host || ''} onChange={(e) => handleChange('smtp_host', e.target.value)} placeholder="smtp.gmail.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>SMTP Port</Label>
+                  <Input type="number" value={settings.smtp_port || 587} onChange={(e) => handleChange('smtp_port', parseInt(e.target.value))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>SMTP Username</Label>
+                  <Input value={settings.smtp_username || ''} onChange={(e) => handleChange('smtp_username', e.target.value)} placeholder="user@gmail.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>SMTP Password</Label>
+                  <Input type="password" value={settings.smtp_password || ''} onChange={(e) => handleChange('smtp_password', e.target.value)} placeholder="••••••••" />
+                </div>
+                <div className="space-y-2">
+                  <Label>From Email</Label>
+                  <Input value={settings.smtp_from_email || ''} onChange={(e) => handleChange('smtp_from_email', e.target.value)} placeholder="noreply@yoursite.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>From Name</Label>
+                  <Input value={settings.smtp_from_name || ''} onChange={(e) => handleChange('smtp_from_name', e.target.value)} placeholder="TribeYangu" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 2FA Global Toggle */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                Two-Factor Authentication
+              </CardTitle>
+              <CardDescription>Enable or disable 2FA for all users</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Allow 2FA</Label>
+                  <select
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={settings['2fa_enabled'] === true || settings['2fa_enabled'] === 'true' ? 'true' : 'false'}
+                    onChange={(e) => handleChange('2fa_enabled', e.target.value === 'true')}
+                  >
+                    <option value="true">Enabled — users can opt in</option>
+                    <option value="false">Disabled — 2FA unavailable</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Allowed Methods</Label>
+                  <select
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={settings['2fa_methods'] || 'both'}
+                    onChange={(e) => handleChange('2fa_methods', e.target.value)}
+                  >
+                    <option value="both">SMS & Email</option>
+                    <option value="sms">SMS Only</option>
+                    <option value="email">Email Only</option>
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* API Keys for Social Login */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="w-5 h-5 text-primary" />
+                API Keys & Integrations
+              </CardTitle>
+              <CardDescription>Configure third-party service credentials. Social login keys are used platform-wide.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Google Client ID</Label>
+                  <Input value={settings.google_client_id || ''} onChange={(e) => handleChange('google_client_id', e.target.value)} placeholder="xxxx.apps.googleusercontent.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Google Client Secret</Label>
+                  <Input type="password" value={settings.google_client_secret || ''} onChange={(e) => handleChange('google_client_secret', e.target.value)} placeholder="••••••••" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Africa's Talking API Key</Label>
+                  <Input type="password" value={settings.at_api_key || ''} onChange={(e) => handleChange('at_api_key', e.target.value)} placeholder="••••••••" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Africa's Talking Username</Label>
+                  <Input value={settings.at_username || ''} onChange={(e) => handleChange('at_username', e.target.value)} placeholder="sandbox" />
                 </div>
               </div>
             </CardContent>

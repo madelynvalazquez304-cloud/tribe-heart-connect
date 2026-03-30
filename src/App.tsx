@@ -17,6 +17,7 @@ import VotingPage from "./pages/VotingPage";
 import ResetPassword from "./pages/ResetPassword";
 import UserDashboard from "./pages/UserDashboard";
 import BecomeCreator from "./pages/BecomeCreator";
+import Contact from "./pages/Contact";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -74,6 +75,7 @@ const App = () => (
             <Route path="/vote" element={<VotingPage />} />
             <Route path="/vote/:slug" element={<VotingPage />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/become-creator" element={
               <ProtectedRoute>
                 <BecomeCreator />
