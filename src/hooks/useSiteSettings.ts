@@ -6,6 +6,8 @@ export interface SiteSettings {
   site_tagline: string;
   site_logo_url: string;
   contact_email: string;
+  contact_phone: string;
+  contact_address: string;
   copyright_text: string;
   footer_description: string;
   social_twitter: string;
