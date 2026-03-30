@@ -450,6 +450,7 @@ const AdminSettings = () => {
                 </div>
               </div>
             </CardContent>
+          </Card>
 
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-6">
