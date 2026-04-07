@@ -1,0 +1,22 @@
+{
+  "name": "TribeYangu",
+  "short_name": "TribeYangu",
+  "description": "Feel My Love - Support your favorite creators",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#e0365b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/WtwxPw9jHFef9WUh7C28NpNuBV82/uploads/1770514331883-ChatGPT_Image_Feb_8,_2026,_04_30_16_AM_(3).png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/WtwxPw9jHFef9WUh7C28NpNuBV82/uploads/1770514331883-ChatGPT_Image_Feb_8,_2026,_04_30_16_AM_(3).png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
