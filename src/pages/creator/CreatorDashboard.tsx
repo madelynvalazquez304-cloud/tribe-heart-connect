@@ -11,10 +11,9 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format, subDays, startOfDay } from 'date-fns';
+import { format, subDays } from 'date-fns';
 
 const CreatorDashboard = () => {
-  const { user } = useAuth();
   const { data: creator, isLoading } = useMyCreator();
 
   const { data: balance } = useQuery({
@@ -24,23 +23,6 @@ const CreatorDashboard = () => {
       const { data, error } = await supabase.rpc('get_creator_balance', { _creator_id: creator.id });
       if (error) throw error;
       return data || 0;
-    },
-    enabled: !!creator
-  });
-
-  const { data: recentDonations } = useQuery({
-    queryKey: ['recent-creator-donations', creator?.id],
-    queryFn: async () => {
-      if (!creator) return [];
-      const { data, error } = await supabase
-        .from('donations')
-        .select('*')
-        .eq('creator_id', creator.id)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      return data;
     },
     enabled: !!creator
   });
