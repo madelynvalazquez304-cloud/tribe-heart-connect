@@ -184,6 +184,52 @@
   .organic-blob-2 {
     border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
   }
+
+  /* Glass morphism */
+  .glass {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  .glass-dark {
+    background: hsl(215 30% 12% / 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+  }
+
+  /* Marquee for infinite scroll */
+  .marquee {
+    display: flex;
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  }
+
+  .marquee-inner {
+    display: flex;
+    animation: marquee 30s linear infinite;
+    gap: 1.5rem;
+  }
+
+  /* Stat counter */
+  .stat-card {
+    @apply relative overflow-hidden rounded-2xl p-6;
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--secondary)) 100%);
+  }
+
+  .stat-card::before {
+    content: '';
+    @apply absolute -top-12 -right-12 w-24 h-24 rounded-full opacity-10;
+    background: hsl(var(--primary));
+  }
+
+  /* Skeleton pulse */
+  .skeleton-pulse {
+    @apply rounded-lg;
+    background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--muted) / 0.5) 50%, hsl(var(--muted)) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
 }
 
 @layer utilities {
@@ -207,6 +253,18 @@
     animation: scale-in 0.4s ease-out forwards;
   }
 
+  .animate-slide-in-right {
+    animation: slide-in-right 0.5s ease-out forwards;
+  }
+
+  .animate-bounce-in {
+    animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+  }
+
+  .animate-count-up {
+    animation: count-up 1s ease-out forwards;
+  }
+
   .hover-lift {
     @apply transition-all duration-300 ease-out;
   }
@@ -222,6 +280,29 @@
 
   .hover-glow:hover {
     box-shadow: var(--shadow-warm);
+  }
+
+  .hover-scale {
+    @apply transition-transform duration-300;
+  }
+
+  .hover-scale:hover {
+    transform: scale(1.03);
+  }
+
+  /* Staggered animation delay helpers */
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -248,4 +329,29 @@
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes bounce-in {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
