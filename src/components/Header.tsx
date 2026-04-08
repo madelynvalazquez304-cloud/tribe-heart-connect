@@ -22,11 +22,6 @@ const Header = () => {
     navigate('/');
   };
 
-  const getDashboardLink = () => {
-    if (isAdmin) return '/admin';
-    if (isCreator) return '/dashboard';
-    return '/account';
-  };
 
   const siteName = site?.site_name || 'TribeYangu';
   const nameParts = siteName.includes('Tribe') 
