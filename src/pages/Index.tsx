@@ -461,7 +461,7 @@ const CTASection = () => (
 /* ─── Main Index ─── */
 const Index = () => {
   return (
-    <>
+    <div className="pb-20 md:pb-0">
       <Header />
       <HeroSection />
       <CreatorsShowcase />
@@ -471,7 +471,7 @@ const Index = () => {
       <TrustSection />
       <CTASection />
       <Footer />
-    </>
+    </div>
   );
 };
 
