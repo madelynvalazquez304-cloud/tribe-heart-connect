@@ -355,3 +355,23 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Safe area for mobile bottom nav */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Add bottom padding to pages with bottom nav on mobile */
+.mobile-nav-spacing {
+  padding-bottom: 5rem;
+}
+
+@media (min-width: 768px) {
+  .mobile-nav-spacing {
+    padding-bottom: 0;
+  }
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
