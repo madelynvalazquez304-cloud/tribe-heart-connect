@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Heart, Menu, X, User, LogOut, LayoutDashboard, Shield } from "lucide-react";
-import { useState } from "react";
+import { Heart, User, LogOut, LayoutDashboard, Shield } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import {
@@ -14,7 +14,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, isAdmin, isCreator, signOut, isLoading } = useAuth();
   const { data: site } = useSiteSettings();
   const navigate = useNavigate();
