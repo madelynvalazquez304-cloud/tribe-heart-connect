@@ -198,7 +198,7 @@ const CreatorPage = () => {
   return (
     <div style={themeStyles}>
       <GiftAnimationOverlay creatorId={creator.id} />
-      <main className="min-h-screen">
+      <main className="min-h-screen pb-24 md:pb-0">
         {/* Banner with floating action icons */}
         <div className="relative h-48 md:h-64 overflow-hidden">
           {creator.banner_url ? (

@@ -32,6 +32,7 @@ import {
   Ban,
   ShoppingCart
 } from 'lucide-react';
+import MobileDashboardNav from '@/components/MobileDashboardNav';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -275,11 +276,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, type }) => 
       </aside>
 
       {/* Main Content */}
-      <main className="lg:pl-64 pt-16 lg:pt-0 min-h-screen">
+      <main className="lg:pl-64 pt-16 lg:pt-0 min-h-screen pb-20 lg:pb-0">
         <div className="p-4 md:p-6 lg:p-8">
           {children}
         </div>
       </main>
+
+      {/* Mobile Bottom Nav for Dashboard */}
+      <MobileDashboardNav type={type} />
     </div>
   );
 };

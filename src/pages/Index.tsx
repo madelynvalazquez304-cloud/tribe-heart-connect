@@ -50,7 +50,7 @@ const HeroSection = () => {
   const raisedCount = useCountUp(Math.round((stats?.raised || 5000000) / 1000000), 1800);
 
   return (
-    <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
+    <section className="relative min-h-[90vh] md:min-h-screen flex items-center pt-16 md:pt-20 overflow-hidden">
       <div className="absolute inset-0 gradient-hero" />
       <div className="absolute inset-0">
         <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-primary/15 rounded-full blur-[120px] animate-pulse-soft" />
@@ -65,7 +65,7 @@ const HeroSection = () => {
               <Sparkles className="w-4 h-4 text-gold" />
               <span className="text-primary-foreground/90">The #1 Platform for African Creators</span>
             </div>
-            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-extrabold text-primary-foreground leading-[1.1] animate-slide-up tracking-tight">
+            <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-extrabold text-primary-foreground leading-[1.1] animate-slide-up tracking-tight">
               Monetize Your{" "}
               <span className="text-gradient">Passion</span>,<br />
               Build Your{" "}
@@ -461,7 +461,7 @@ const CTASection = () => (
 /* ─── Main Index ─── */
 const Index = () => {
   return (
-    <>
+    <div className="pb-20 md:pb-0">
       <Header />
       <HeroSection />
       <CreatorsShowcase />
@@ -471,7 +471,7 @@ const Index = () => {
       <TrustSection />
       <CTASection />
       <Footer />
-    </>
+    </div>
   );
 };
 

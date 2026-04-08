@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CreatorInstallBanner from "@/components/CreatorInstallBanner";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -248,6 +249,7 @@ const App = () => (
             <Route path="/:username" element={<CreatorPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <MobileBottomNav />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

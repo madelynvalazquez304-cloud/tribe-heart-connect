@@ -101,7 +101,7 @@ const VotingPage = () => {
     return (
       <>
         <Header />
-        <main className="min-h-screen pt-24 pb-12">
+        <main className="min-h-screen pt-20 md:pt-24 pb-24 md:pb-12">
           <div className="container mx-auto px-4">
             <Link to="/vote" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors">
               <ArrowLeft className="w-4 h-4" /> All Awards
@@ -212,7 +212,7 @@ const VotingPage = () => {
   return (
     <>
       <Header />
-      <main className="min-h-screen pt-24 pb-12">
+      <main className="min-h-screen pt-20 md:pt-24 pb-24 md:pb-12">
         <div className="container mx-auto px-4">
           {/* Hero Section */}
           <div className="text-center mb-12">
