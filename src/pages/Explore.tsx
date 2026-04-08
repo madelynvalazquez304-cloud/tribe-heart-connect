@@ -59,7 +59,7 @@ const Explore = () => {
   return (
     <>
       <Header />
-      <main className="min-h-screen pt-24 pb-12">
+      <main className="min-h-screen pt-20 md:pt-24 pb-24 md:pb-12">
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="text-center mb-12">
