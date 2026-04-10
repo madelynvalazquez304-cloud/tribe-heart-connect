@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Target, Heart, Loader2, Phone, CheckCircle2, XCircle, Users } from 'lucide-react';
+import { Target, Heart, Loader2, Phone, Users, Clock, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import PaymentProcessingModal, { PaymentStatus } from './PaymentProcessingModal';
 
 interface CampaignSectionProps {
   creatorId: string;
@@ -15,9 +17,8 @@ interface CampaignSectionProps {
   themeColor?: string;
 }
 
-type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
-
 const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorName, themeColor = '#E07B4C' }) => {
+  const queryClient = useQueryClient();
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
   const [amount, setAmount] = useState('');
   const [phone, setPhone] = useState('');
@@ -40,16 +41,45 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
     enabled: !!creatorId
   });
 
+  // Fetch real contribution counts for accuracy
+  const { data: contributionStats } = useQuery({
+    queryKey: ['campaign-contribution-stats', creatorId],
+    queryFn: async () => {
+      if (!campaigns?.length) return {};
+      const stats: Record<string, { total: number; supporters: number }> = {};
+      for (const campaign of campaigns) {
+        const { data } = await supabase
+          .from('campaign_contributions')
+          .select('amount, donor_phone')
+          .eq('campaign_id', campaign.id)
+          .eq('status', 'completed');
+        
+        const total = (data || []).reduce((sum, c) => sum + Number(c.amount), 0);
+        const uniquePhones = new Set((data || []).map(c => c.donor_phone).filter(Boolean));
+        stats[campaign.id] = { total, supporters: uniquePhones.size || (data?.length || 0) };
+      }
+      return stats;
+    },
+    enabled: !!campaigns?.length
+  });
+
   const contribute = useMutation({
     mutationFn: async () => {
       if (!selectedCampaign || !amount || !phone) {
         throw new Error('Please fill all required fields');
       }
+      const parsedAmount = parseInt(amount);
+      if (isNaN(parsedAmount) || parsedAmount < 10) {
+        throw new Error('Minimum contribution is KSh 10');
+      }
+      if (!/^(?:254|0)\d{9}$/.test(phone.replace(/\s/g, ''))) {
+        throw new Error('Enter a valid M-PESA number (e.g. 0712345678)');
+      }
 
       const response = await supabase.functions.invoke('mpesa-stk', {
         body: {
-          phone,
-          amount: parseInt(amount),
+          phone: phone.replace(/\s/g, ''),
+          amount: parsedAmount,
           creatorId,
           donorName: donorName || undefined,
           type: 'campaign',
@@ -64,28 +94,6 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
     onSuccess: (data) => {
       setRecordId(data.recordId);
       setPaymentStatus('polling');
-      
-      // Start polling
-      const pollInterval = setInterval(async () => {
-        const response = await supabase.functions.invoke('check-payment', {
-          body: { recordId: data.recordId, type: 'campaign' }
-        });
-
-        if (response.data?.status === 'completed') {
-          setPaymentStatus('success');
-          clearInterval(pollInterval);
-        } else if (response.data?.status === 'failed') {
-          setPaymentStatus('failed');
-          clearInterval(pollInterval);
-        }
-      }, 3000);
-
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (paymentStatus === 'polling') {
-          setPaymentStatus('failed');
-        }
-      }, 120000);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -94,92 +102,128 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
   });
 
   const handleContribute = () => {
-    if (parseInt(amount) < 10) {
-      toast.error('Minimum amount is KSh 10');
-      return;
-    }
     setPaymentStatus('processing');
     contribute.mutate();
   };
 
   const resetPayment = () => {
-    setPaymentStatus('idle');
     if (paymentStatus === 'success') {
+      queryClient.invalidateQueries({ queryKey: ['public-campaigns', creatorId] });
+      queryClient.invalidateQueries({ queryKey: ['campaign-contribution-stats', creatorId] });
       setAmount('');
       setPhone('');
       setDonorName('');
       setSelectedCampaign(null);
     }
+    setPaymentStatus('idle');
+    setRecordId('');
   };
 
   if (isLoading || !campaigns || campaigns.length === 0) return null;
 
-  const getProgress = (current: number, goal: number) => Math.min((current / goal) * 100, 100);
+  const getRealAmount = (campaign: any) => {
+    return contributionStats?.[campaign.id]?.total ?? Number(campaign.current_amount || 0);
+  };
+
+  const getRealSupporters = (campaign: any) => {
+    return contributionStats?.[campaign.id]?.supporters ?? (campaign.supporter_count || 0);
+  };
+
+  const getProgress = (current: number, goal: number) => {
+    if (goal <= 0) return 0;
+    return Math.min((current / goal) * 100, 100);
+  };
+
+  const getDaysLeft = (endDate: string | null) => {
+    if (!endDate) return null;
+    const end = new Date(endDate);
+    const now = new Date();
+    const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 0;
+  };
 
   return (
     <Card className="overflow-hidden">
       <div className="h-1" style={{ backgroundColor: themeColor }} />
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Target className="w-5 h-5" style={{ color: themeColor }} />
           <h3 className="font-semibold">Active Campaigns</h3>
+          <Badge variant="secondary">{campaigns.length}</Badge>
         </div>
 
         <div className="space-y-4">
-          {campaigns.map((campaign) => (
-            <div key={campaign.id} className="rounded-lg border overflow-hidden">
-              {campaign.banner_url && (
-                <img 
-                  src={campaign.banner_url} 
-                  alt={campaign.title} 
-                  className="w-full h-32 object-cover"
-                />
-              )}
-              <div className="p-4">
-                <h4 className="font-semibold mb-2">{campaign.title}</h4>
-                {campaign.description && (
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{campaign.description}</p>
-                )}
-                
-                <div className="space-y-2 mb-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium" style={{ color: themeColor }}>
-                      KSh {Number(campaign.current_amount || 0).toLocaleString()}
-                    </span>
-                    <span className="text-muted-foreground">
-                      of KSh {Number(campaign.goal_amount).toLocaleString()}
-                    </span>
-                  </div>
-                  <Progress 
-                    value={getProgress(campaign.current_amount || 0, campaign.goal_amount)} 
-                    className="h-2"
+          {campaigns.map((campaign) => {
+            const realAmount = getRealAmount(campaign);
+            const realSupporters = getRealSupporters(campaign);
+            const progress = getProgress(realAmount, campaign.goal_amount);
+            const daysLeft = getDaysLeft(campaign.end_date);
+            
+            return (
+              <div key={campaign.id} className="rounded-lg border overflow-hidden">
+                {campaign.banner_url && (
+                  <img 
+                    src={campaign.banner_url} 
+                    alt={campaign.title} 
+                    className="w-full h-32 object-cover"
+                    loading="lazy"
                   />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {campaign.supporter_count || 0} supporters
-                    </span>
-                    <span>{Math.round(getProgress(campaign.current_amount || 0, campaign.goal_amount))}%</span>
+                )}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h4 className="font-semibold">{campaign.title}</h4>
+                    {progress >= 100 && (
+                      <Badge className="bg-green-600 text-white shrink-0">Goal Reached! 🎉</Badge>
+                    )}
                   </div>
+                  {campaign.description && (
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{campaign.description}</p>
+                  )}
+                  
+                  <div className="space-y-2 mb-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-bold" style={{ color: themeColor }}>
+                        KSh {realAmount.toLocaleString()}
+                      </span>
+                      <span className="text-muted-foreground">
+                        of KSh {Number(campaign.goal_amount).toLocaleString()}
+                      </span>
+                    </div>
+                    <Progress value={progress} className="h-2.5" />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {realSupporters} supporter{realSupporters !== 1 ? 's' : ''}
+                      </span>
+                      <span className="font-medium">{Math.round(progress)}%</span>
+                      {daysLeft !== null && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {daysLeft > 0 ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left` : 'Ended'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full gap-2 text-white"
+                    style={{ backgroundColor: themeColor }}
+                    onClick={() => setSelectedCampaign(campaign)}
+                    disabled={daysLeft === 0}
+                  >
+                    <Heart className="w-4 h-4" />
+                    {daysLeft === 0 ? 'Campaign Ended' : 'Contribute'}
+                  </Button>
                 </div>
-                
-                <Button 
-                  className="w-full gap-2 text-white"
-                  style={{ backgroundColor: themeColor }}
-                  onClick={() => setSelectedCampaign(campaign)}
-                >
-                  <Heart className="w-4 h-4" />
-                  Contribute
-                </Button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
 
       {/* Contribution Dialog */}
       <Dialog open={!!selectedCampaign && paymentStatus === 'idle'} onOpenChange={(open) => !open && setSelectedCampaign(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Support {selectedCampaign?.title}</DialogTitle>
             <DialogDescription>
@@ -191,16 +235,20 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
             <div className="p-4 rounded-lg bg-secondary/50">
               <div className="flex justify-between text-sm mb-2">
                 <span className="font-medium">
-                  KSh {Number(selectedCampaign?.current_amount || 0).toLocaleString()}
+                  KSh {getRealAmount(selectedCampaign).toLocaleString()}
                 </span>
                 <span className="text-muted-foreground">
                   Goal: KSh {Number(selectedCampaign?.goal_amount || 0).toLocaleString()}
                 </span>
               </div>
               <Progress 
-                value={getProgress(selectedCampaign?.current_amount || 0, selectedCampaign?.goal_amount || 1)} 
+                value={getProgress(getRealAmount(selectedCampaign), selectedCampaign?.goal_amount || 1)} 
                 className="h-2"
               />
+              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                <TrendingUp className="w-3 h-3" />
+                <span>{getRealSupporters(selectedCampaign)} supporters so far</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-4 gap-2">
@@ -211,16 +259,17 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
                   size="sm"
                   onClick={() => setAmount(preset.toString())}
                 >
-                  {preset}
+                  {preset >= 1000 ? `${preset/1000}K` : preset}
                 </Button>
               ))}
             </div>
 
             <Input
               type="number"
-              placeholder="Custom amount (KSh)"
+              placeholder="Custom amount (min KSh 10)"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              min="10"
             />
 
             <div className="relative">
@@ -244,55 +293,30 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
               className="w-full gap-2 text-white"
               style={{ backgroundColor: themeColor }}
               onClick={handleContribute}
-              disabled={contribute.isPending || !amount || !phone}
+              disabled={contribute.isPending || !amount || !phone || parseInt(amount) < 10}
             >
               {contribute.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Heart className="w-4 h-4" />
               )}
-              Contribute KSh {amount || 0}
+              Contribute KSh {parseInt(amount) >= 10 ? parseInt(amount).toLocaleString() : '0'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Payment Status Dialog */}
-      <Dialog open={paymentStatus !== 'idle' && paymentStatus !== 'processing'} onOpenChange={() => resetPayment()}>
-        <DialogContent>
-          <div className="py-8 text-center">
-            {paymentStatus === 'polling' && (
-              <>
-                <Loader2 className="w-16 h-16 mx-auto mb-4 animate-spin" style={{ color: themeColor }} />
-                <p className="text-muted-foreground">Check your phone for M-PESA prompt</p>
-              </>
-            )}
-            {paymentStatus === 'success' && (
-              <>
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircle2 className="w-12 h-12 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Thank You!</h3>
-                <p className="text-muted-foreground">Your contribution has been received!</p>
-              </>
-            )}
-            {paymentStatus === 'failed' && (
-              <>
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-                  <XCircle className="w-12 h-12 text-red-600" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Payment Failed</h3>
-                <p className="text-muted-foreground">Please try again</p>
-              </>
-            )}
-          </div>
-          {(paymentStatus === 'success' || paymentStatus === 'failed') && (
-            <Button onClick={resetPayment} className="w-full">
-              {paymentStatus === 'success' ? 'Done' : 'Try Again'}
-            </Button>
-          )}
-        </DialogContent>
-      </Dialog>
+      <PaymentProcessingModal
+        isOpen={paymentStatus !== 'idle'}
+        status={paymentStatus}
+        recordId={recordId}
+        type="campaign"
+        themeColor={themeColor}
+        amount={parseInt(amount) || 0}
+        onComplete={(success) => setPaymentStatus(success ? 'success' : 'failed')}
+        onClose={resetPayment}
+        successMessage={`Your contribution to "${selectedCampaign?.title}" has been received! Thank you!`}
+      />
     </Card>
   );
 };
