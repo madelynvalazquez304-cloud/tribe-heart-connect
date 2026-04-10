@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingBag, Plus, Minus, Loader2, Phone, CheckCircle2, XCircle, Package } from 'lucide-react';
+
+import { ShoppingBag, Plus, Minus, Loader2, Phone, Package, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import PaymentProcessingModal, { PaymentStatus } from './PaymentProcessingModal';
 
 interface MerchandiseStoreProps {
   creatorId: string;
@@ -16,10 +17,9 @@ interface MerchandiseStoreProps {
   themeColor?: string;
 }
 
-type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
-
 const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorName, themeColor = '#E07B4C' }) => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [imageIndex, setImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
@@ -27,6 +27,7 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
+  const [orderId, setOrderId] = useState('');
 
   const { data: merchandise, isLoading } = useQuery({
     queryKey: ['public-merchandise', creatorId],
@@ -46,20 +47,36 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
 
   const placeOrder = useMutation({
     mutationFn: async () => {
-      if (!selectedProduct || !customerName || !customerPhone) {
+      if (!selectedProduct || !customerName.trim() || !customerPhone.trim()) {
         throw new Error('Please fill all required fields');
+      }
+      if (!/^(?:254|0)\d{9}$/.test(customerPhone.replace(/\s/g, ''))) {
+        throw new Error('Enter a valid M-PESA number');
+      }
+      
+      const sizes = getArray(selectedProduct.sizes);
+      if (sizes.length > 0 && !selectedSize) {
+        throw new Error('Please select a size');
+      }
+      const colors = getArray(selectedProduct.colors);
+      if (colors.length > 0 && !selectedColor) {
+        throw new Error('Please select a color');
+      }
+
+      // Check stock
+      if (selectedProduct.stock !== null && selectedProduct.stock < quantity) {
+        throw new Error(`Only ${selectedProduct.stock} items available`);
       }
 
       const total = selectedProduct.price * quantity;
       
-      // Create order first
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           creator_id: creatorId,
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          customer_email: customerEmail || null,
+          customer_name: customerName.trim(),
+          customer_phone: customerPhone.replace(/\s/g, ''),
+          customer_email: customerEmail.trim() || null,
           subtotal: total,
           total: total,
           status: 'pending'
@@ -69,8 +86,7 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
       
       if (orderError) throw orderError;
 
-      // Add order items
-      await supabase.from('order_items').insert({
+      const { error: itemError } = await supabase.from('order_items').insert({
         order_id: order.id,
         merchandise_id: selectedProduct.id,
         quantity,
@@ -80,10 +96,11 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
         color: selectedColor || null
       });
 
-      // Initiate payment
+      if (itemError) throw itemError;
+
       const response = await supabase.functions.invoke('mpesa-stk', {
         body: {
-          phone: customerPhone,
+          phone: customerPhone.replace(/\s/g, ''),
           amount: total,
           creatorId,
           type: 'merchandise',
@@ -96,28 +113,8 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
       return { ...response.data, orderId: order.id };
     },
     onSuccess: (data) => {
+      setOrderId(data.orderId);
       setPaymentStatus('polling');
-      
-      const pollInterval = setInterval(async () => {
-        const response = await supabase.functions.invoke('check-payment', {
-          body: { recordId: data.orderId, type: 'merchandise' }
-        });
-
-        if (response.data?.status === 'completed') {
-          setPaymentStatus('success');
-          clearInterval(pollInterval);
-        } else if (response.data?.status === 'failed') {
-          setPaymentStatus('failed');
-          clearInterval(pollInterval);
-        }
-      }, 3000);
-
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (paymentStatus === 'polling') {
-          setPaymentStatus('failed');
-        }
-      }, 120000);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -126,7 +123,6 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
   });
 
   const resetOrder = () => {
-    setPaymentStatus('idle');
     if (paymentStatus === 'success') {
       setSelectedProduct(null);
       setQuantity(1);
@@ -136,43 +132,48 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
       setCustomerPhone('');
       setCustomerEmail('');
     }
+    setPaymentStatus('idle');
+    setOrderId('');
+    setImageIndex(0);
   };
 
-  const getImages = (product: any): string[] => {
-    if (!product.images) return [];
-    return product.images as string[];
+  const getArray = (val: any): string[] => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val as string[];
+    return [];
   };
 
-  const getSizes = (product: any): string[] => {
-    if (!product.sizes) return [];
-    return product.sizes as string[];
-  };
-
-  const getColors = (product: any): string[] => {
-    if (!product.colors) return [];
-    return product.colors as string[];
+  const openProduct = (product: any) => {
+    setSelectedProduct(product);
+    setImageIndex(0);
+    setQuantity(1);
+    setSelectedSize('');
+    setSelectedColor('');
   };
 
   if (isLoading || !merchandise || merchandise.length === 0) return null;
 
+  const total = selectedProduct ? selectedProduct.price * quantity : 0;
+
   return (
     <Card className="overflow-hidden">
       <div className="h-1" style={{ backgroundColor: themeColor }} />
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <ShoppingBag className="w-5 h-5" style={{ color: themeColor }} />
           <h3 className="font-semibold">Store</h3>
-          <Badge variant="secondary">{merchandise.length} items</Badge>
+          <Badge variant="secondary">{merchandise.length} item{merchandise.length !== 1 ? 's' : ''}</Badge>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           {merchandise.map((product) => {
-            const images = getImages(product);
+            const images = getArray(product.images);
+            const outOfStock = product.stock !== null && product.stock <= 0;
             return (
               <div 
                 key={product.id} 
-                className="rounded-lg border overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
-                onClick={() => setSelectedProduct(product)}
+                className={`rounded-lg border overflow-hidden cursor-pointer hover:shadow-lg transition-all group relative ${outOfStock ? 'opacity-60' : ''}`}
+                onClick={() => !outOfStock && openProduct(product)}
               >
                 <div className="aspect-square bg-secondary/50 relative overflow-hidden">
                   {images.length > 0 ? (
@@ -180,11 +181,22 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
                       src={images[0]} 
                       alt={product.name} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Package className="w-8 h-8 text-muted-foreground/30" />
                     </div>
+                  )}
+                  {outOfStock && (
+                    <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+                      <Badge variant="destructive">Sold Out</Badge>
+                    </div>
+                  )}
+                  {product.stock !== null && product.stock > 0 && product.stock <= 5 && (
+                    <Badge className="absolute top-2 right-2 bg-amber-600 text-white text-[10px]">
+                      {product.stock} left
+                    </Badge>
                   )}
                 </div>
                 <div className="p-3">
@@ -201,196 +213,217 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
 
       {/* Product Detail Dialog */}
       <Dialog open={!!selectedProduct && paymentStatus === 'idle'} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          {selectedProduct && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{selectedProduct.name}</DialogTitle>
-                <DialogDescription>
-                  From {creatorName}'s Store
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4">
-                {/* Product Image */}
-                {getImages(selectedProduct).length > 0 && (
-                  <div className="rounded-lg overflow-hidden">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+          {selectedProduct && (() => {
+            const images = getArray(selectedProduct.images);
+            const sizes = getArray(selectedProduct.sizes);
+            const colors = getArray(selectedProduct.colors);
+            const maxQty = selectedProduct.stock !== null ? Math.min(selectedProduct.stock, 10) : 10;
+            
+            return (
+              <>
+                {/* Image carousel */}
+                {images.length > 0 && (
+                  <div className="relative aspect-square bg-secondary">
                     <img 
-                      src={getImages(selectedProduct)[0]} 
+                      src={images[imageIndex]} 
                       alt={selectedProduct.name}
-                      className="w-full aspect-square object-cover"
+                      className="w-full h-full object-cover"
                     />
-                  </div>
-                )}
-
-                {/* Description */}
-                {selectedProduct.description && (
-                  <p className="text-sm text-muted-foreground">{selectedProduct.description}</p>
-                )}
-
-                {/* Price */}
-                <div className="text-2xl font-bold" style={{ color: themeColor }}>
-                  KSh {Number(selectedProduct.price).toLocaleString()}
-                </div>
-
-                {/* Size Selection */}
-                {getSizes(selectedProduct).length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Size</label>
-                    <Select value={selectedSize} onValueChange={setSelectedSize}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getSizes(selectedProduct).map((size) => (
-                          <SelectItem key={size} value={size}>{size}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Color Selection */}
-                {getColors(selectedProduct).length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Color</label>
-                    <div className="flex gap-2">
-                      {getColors(selectedProduct).map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => setSelectedColor(color)}
-                          className={`px-3 py-1 rounded-lg border text-sm transition-all ${
-                            selectedColor === color 
-                              ? 'border-primary bg-primary/10 text-primary font-medium' 
-                              : 'hover:bg-secondary'
-                          }`}
+                    {images.length > 1 && (
+                      <>
+                        <button 
+                          onClick={() => setImageIndex(i => (i - 1 + images.length) % images.length)}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center shadow"
                         >
-                          {color}
+                          <ChevronLeft className="w-4 h-4" />
                         </button>
-                      ))}
+                        <button 
+                          onClick={() => setImageIndex(i => (i + 1) % images.length)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center shadow"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                          {images.map((_: string, i: number) => (
+                            <button
+                              key={i}
+                              onClick={() => setImageIndex(i)}
+                              className={`w-2 h-2 rounded-full transition-all ${i === imageIndex ? 'bg-white w-4' : 'bg-white/50'}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="p-5 space-y-4">
+                  <DialogHeader className="text-left">
+                    <DialogTitle className="text-xl">{selectedProduct.name}</DialogTitle>
+                    <DialogDescription>From {creatorName}'s Store</DialogDescription>
+                  </DialogHeader>
+
+                  {selectedProduct.description && (
+                    <p className="text-sm text-muted-foreground">{selectedProduct.description}</p>
+                  )}
+
+                  <div className="text-2xl font-bold" style={{ color: themeColor }}>
+                    KSh {Number(selectedProduct.price).toLocaleString()}
+                  </div>
+
+                  {/* Stock indicator */}
+                  {selectedProduct.stock !== null && (
+                    <div className="flex items-center gap-2 text-sm">
+                      {selectedProduct.stock <= 5 ? (
+                        <><AlertCircle className="w-4 h-4 text-amber-500" /><span className="text-amber-600">Only {selectedProduct.stock} left in stock</span></>
+                      ) : (
+                        <><Package className="w-4 h-4 text-green-500" /><span className="text-green-600">In stock</span></>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Size Selection */}
+                  {sizes.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Size <span className="text-destructive">*</span></label>
+                      <div className="flex flex-wrap gap-2">
+                        {sizes.map((size) => (
+                          <button
+                            key={size}
+                            onClick={() => setSelectedSize(size)}
+                            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                              selectedSize === size 
+                                ? 'border-primary bg-primary text-primary-foreground' 
+                                : 'hover:bg-secondary'
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Color Selection */}
+                  {colors.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Color <span className="text-destructive">*</span></label>
+                      <div className="flex flex-wrap gap-2">
+                        {colors.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => setSelectedColor(color)}
+                            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                              selectedColor === color 
+                                ? 'border-primary bg-primary text-primary-foreground' 
+                                : 'hover:bg-secondary'
+                            }`}
+                          >
+                            {color}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quantity */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Quantity</span>
+                    <div className="flex items-center gap-3">
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        disabled={quantity <= 1}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </Button>
+                      <span className="w-8 text-center font-semibold text-lg">{quantity}</span>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => setQuantity(Math.min(maxQty, quantity + 1))}
+                        disabled={quantity >= maxQty}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                )}
 
-                {/* Quantity */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Quantity</span>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    >
-                      <Minus className="w-4 h-4" />
-                    </Button>
-                    <span className="w-8 text-center font-semibold">{quantity}</span>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => setQuantity(quantity + 1)}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+                  <hr />
 
-                {/* Total */}
-                <div className="p-3 rounded-lg bg-secondary/50 flex justify-between items-center">
-                  <span className="font-medium">Total</span>
-                  <span className="text-xl font-bold" style={{ color: themeColor }}>
-                    KSh {(selectedProduct.price * quantity).toLocaleString()}
-                  </span>
-                </div>
-
-                <hr />
-
-                {/* Customer Info */}
-                <Input
-                  placeholder="Your name *"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-                
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  {/* Customer Info */}
                   <Input
-                    type="tel"
-                    placeholder="M-PESA number (07...) *"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="pl-10"
+                    placeholder="Your name *"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
                   />
+                  
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type="tel"
+                      placeholder="M-PESA number (07...) *"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <Input
+                    type="email"
+                    placeholder="Email (optional)"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                  />
+
+                  {/* Total + Buy */}
+                  <div className="p-4 rounded-lg bg-secondary/50 flex justify-between items-center">
+                    <div>
+                      <span className="text-sm text-muted-foreground">{quantity} × KSh {Number(selectedProduct.price).toLocaleString()}</span>
+                      <p className="text-xl font-bold" style={{ color: themeColor }}>
+                        KSh {total.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button 
+                    className="w-full gap-2 text-white h-12 text-base"
+                    style={{ backgroundColor: themeColor }}
+                    onClick={() => {
+                      setPaymentStatus('processing');
+                      placeOrder.mutate();
+                    }}
+                    disabled={placeOrder.isPending || !customerName.trim() || !customerPhone.trim()}
+                  >
+                    {placeOrder.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ShoppingBag className="w-4 h-4" />
+                    )}
+                    Buy Now — KSh {total.toLocaleString()}
+                  </Button>
                 </div>
-
-                <Input
-                  type="email"
-                  placeholder="Email (optional)"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                />
-
-                <Button 
-                  className="w-full gap-2 text-white"
-                  style={{ backgroundColor: themeColor }}
-                  onClick={() => {
-                    if (!customerName || !customerPhone) {
-                      toast.error('Please fill required fields');
-                      return;
-                    }
-                    setPaymentStatus('processing');
-                    placeOrder.mutate();
-                  }}
-                  disabled={placeOrder.isPending}
-                >
-                  {placeOrder.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <ShoppingBag className="w-4 h-4" />
-                  )}
-                  Buy Now - KSh {(selectedProduct.price * quantity).toLocaleString()}
-                </Button>
-              </div>
-            </>
-          )}
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
-      {/* Payment Status Dialog */}
-      <Dialog open={paymentStatus !== 'idle' && paymentStatus !== 'processing'} onOpenChange={() => resetOrder()}>
-        <DialogContent>
-          <div className="py-8 text-center">
-            {paymentStatus === 'polling' && (
-              <>
-                <Loader2 className="w-16 h-16 mx-auto mb-4 animate-spin" style={{ color: themeColor }} />
-                <p className="text-muted-foreground">Check your phone for M-PESA prompt</p>
-              </>
-            )}
-            {paymentStatus === 'success' && (
-              <>
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircle2 className="w-12 h-12 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Order Placed!</h3>
-                <p className="text-muted-foreground">You'll receive a confirmation shortly</p>
-              </>
-            )}
-            {paymentStatus === 'failed' && (
-              <>
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-                  <XCircle className="w-12 h-12 text-red-600" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Payment Failed</h3>
-                <p className="text-muted-foreground">Please try again</p>
-              </>
-            )}
-          </div>
-          {(paymentStatus === 'success' || paymentStatus === 'failed') && (
-            <Button onClick={resetOrder} className="w-full">
-              {paymentStatus === 'success' ? 'Continue Shopping' : 'Try Again'}
-            </Button>
-          )}
-        </DialogContent>
-      </Dialog>
+      <PaymentProcessingModal
+        isOpen={paymentStatus !== 'idle'}
+        status={paymentStatus}
+        recordId={orderId}
+        type="purchase"
+        themeColor={themeColor}
+        amount={total}
+        onComplete={(success) => setPaymentStatus(success ? 'success' : 'failed')}
+        onClose={resetOrder}
+        successMessage="Your order has been placed! You'll receive a confirmation shortly."
+      />
     </Card>
   );
 };
