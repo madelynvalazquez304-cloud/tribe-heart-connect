@@ -417,7 +417,7 @@ const MerchandiseStore: React.FC<MerchandiseStoreProps> = ({ creatorId, creatorN
         isOpen={paymentStatus !== 'idle'}
         status={paymentStatus}
         recordId={orderId}
-        type="merchandise"
+        type="purchase"
         themeColor={themeColor}
         amount={total}
         onComplete={(success) => setPaymentStatus(success ? 'success' : 'failed')}
