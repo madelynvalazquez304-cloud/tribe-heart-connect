@@ -10,7 +10,11 @@ const MobileBottomNav: React.FC = () => {
 
   // Don't show on dashboard/admin pages or creator profile pages
   const isDashboard = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/admin');
-  if (isDashboard) return null;
+  const isCreatorProfile = !['/', '/explore', '/vote', '/login', '/signup', '/contact', '/become-creator', '/reset-password', '/account'].includes(location.pathname) 
+    && !isDashboard 
+    && !location.pathname.startsWith('/admin')
+    && !location.pathname.startsWith('/dashboard');
+  if (isDashboard || isCreatorProfile) return null;
 
   const getDashboardPath = () => {
     if (isAdmin) return '/admin';

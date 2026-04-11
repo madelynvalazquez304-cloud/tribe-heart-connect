@@ -2,7 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Phone, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
 
 export type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
 
@@ -35,15 +35,16 @@ const PaymentProcessingModal: React.FC<PaymentProcessingModalProps> = ({
 }) => {
   const isVisible = isOpen ?? open ?? false;
   
-  const typeLabels = {
+  const typeLabels: Record<string, { title: string; success: string; icon: string }> = {
     donation: { title: 'Support', success: 'Thank You!', icon: '💚' },
     gift: { title: 'Gift', success: 'Gift Sent!', icon: giftIcon || '🎁' },
     campaign: { title: 'Contribution', success: 'Contribution Received!', icon: '🎯' },
     purchase: { title: 'Purchase', success: 'Order Confirmed!', icon: '🛍️' },
-    ticket: { title: 'Ticket Purchase', success: 'Tickets Confirmed!', icon: '🎫' }
+    ticket: { title: 'Ticket Purchase', success: 'Tickets Confirmed!', icon: '🎫' },
+    vote: { title: 'Vote', success: 'Vote Counted!', icon: '🏆' }
   };
 
-  const currentType = typeLabels[type];
+  const currentType = typeLabels[type] || { title: 'Payment', success: 'Complete!', icon: '✅' };
 
   return (
     <Dialog open={isVisible} onOpenChange={(o) => !o && onClose()}>
