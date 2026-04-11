@@ -32,19 +32,17 @@ const CreatorPage = () => {
   const [paymentDialog, setPaymentDialog] = useState(false);
   const [checkoutRequestId, setCheckoutRequestId] = useState('');
   const [recordId, setRecordId] = useState('');
+  const [activeTab, setActiveTab] = useState<'support' | 'about'>('support');
 
   const { data: creator, isLoading, error } = useQuery({
     queryKey: ['creator', username],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('creators')
-        .select(`
-          *,
-          category:creator_categories(name, icon)
-        `)
+        .select(`*, category:creator_categories(name, icon)`)
         .eq('username', username)
         .eq('status', 'approved')
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
@@ -75,18 +73,13 @@ const CreatorPage = () => {
 
       const response = await supabase.functions.invoke('mpesa-stk', {
         body: {
-          phone: phoneNumber,
-          amount,
-          creatorId: creator!.id,
-          donorName: donorName || undefined,
-          message: message || undefined,
-          type: 'donation'
+          phone: phoneNumber, amount, creatorId: creator!.id,
+          donorName: donorName || undefined, message: message || undefined, type: 'donation'
         }
       });
 
       if (response.error) throw new Error(response.error.message);
       if (!response.data.success) throw new Error(response.data.error);
-
       return response.data;
     },
     onSuccess: (data) => {
@@ -101,48 +94,23 @@ const CreatorPage = () => {
     }
   });
 
-  // Poll for payment status
   useEffect(() => {
     if (paymentStatus !== 'polling' || !recordId) return;
-
     const pollInterval = setInterval(async () => {
       const response = await supabase.functions.invoke('check-payment', {
         body: { recordId, type: 'donation' }
       });
-
-      if (response.data?.status === 'completed') {
-        setPaymentStatus('success');
-        clearInterval(pollInterval);
-      } else if (response.data?.status === 'failed') {
-        setPaymentStatus('failed');
-        clearInterval(pollInterval);
-      }
+      if (response.data?.status === 'completed') { setPaymentStatus('success'); clearInterval(pollInterval); }
+      else if (response.data?.status === 'failed') { setPaymentStatus('failed'); clearInterval(pollInterval); }
     }, 3000);
-
-    // Stop polling after 2 minutes
-    const timeout = setTimeout(() => {
-      clearInterval(pollInterval);
-      if (paymentStatus === 'polling') {
-        setPaymentStatus('failed');
-      }
-    }, 120000);
-
-    return () => {
-      clearInterval(pollInterval);
-      clearTimeout(timeout);
-    };
+    const timeout = setTimeout(() => { clearInterval(pollInterval); if (paymentStatus === 'polling') setPaymentStatus('failed'); }, 120000);
+    return () => { clearInterval(pollInterval); clearTimeout(timeout); };
   }, [paymentStatus, recordId]);
 
   const handleDonate = () => {
     const amount = customAmount ? parseInt(customAmount) : selectedAmount;
-    if (!amount || amount < 10) {
-      toast.error('Minimum amount is KSh 10');
-      return;
-    }
-    if (!phoneNumber) {
-      toast.error('Phone number is required');
-      return;
-    }
+    if (!amount || amount < 10) { toast.error('Minimum amount is KSh 10'); return; }
+    if (!phoneNumber) { toast.error('Phone number is required'); return; }
     setPaymentDialog(true);
     setPaymentStatus('processing');
     initiateDonation.mutate();
@@ -154,20 +122,14 @@ const CreatorPage = () => {
     setCheckoutRequestId('');
     setRecordId('');
     if (paymentStatus === 'success') {
-      setPhoneNumber('');
-      setDonorName('');
-      setMessage('');
-      setSelectedAmount(300);
-      setCustomAmount('');
+      setPhoneNumber(''); setDonorName(''); setMessage('');
+      setSelectedAmount(300); setCustomAmount('');
     }
   };
 
   const handleShare = async () => {
     if (navigator.share) {
-      await navigator.share({
-        title: `Support ${creator?.display_name} on TribeYangu`,
-        url: window.location.href
-      });
+      await navigator.share({ title: `Support ${creator?.display_name} on TribeYangu`, url: window.location.href });
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast.success('Link copied!');
@@ -176,7 +138,7 @@ const CreatorPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <ProfileLoadingSpinner color={undefined} />
       </div>
     );
@@ -186,7 +148,6 @@ const CreatorPage = () => {
     return <NotFound />;
   }
 
-  // Apply creator theme
   const themeStyles = {
     '--creator-primary': creator.theme_primary || '#E07B4C',
     '--creator-secondary': creator.theme_secondary || '#8B9A6B',
@@ -196,198 +157,170 @@ const CreatorPage = () => {
   const themeColor = creator.theme_primary || '#E07B4C';
 
   return (
-    <div style={themeStyles}>
+    <div style={themeStyles} className="bg-background min-h-screen">
       <GiftAnimationOverlay creatorId={creator.id} />
-      <main className="min-h-screen pb-24 md:pb-0">
-        {/* Banner with floating action icons */}
-        <div className="relative h-48 md:h-64 overflow-hidden">
+      <main className="min-h-screen pb-20 md:pb-0">
+        {/* Banner */}
+        <div className="relative h-40 sm:h-48 md:h-64 overflow-hidden">
           {creator.banner_url ? (
             <img src={creator.banner_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div 
-              className="w-full h-full" 
-              style={{ background: `linear-gradient(135deg, ${themeColor}, ${creator.theme_secondary || '#8B9A6B'})` }}
-            />
+            <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${themeColor}, ${creator.theme_secondary || '#8B9A6B'})` }} />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
           
-          {/* Floating action icons on banner */}
-          <div className="absolute top-4 right-4 flex items-center gap-2">
+          {/* Action icons */}
+          <div className="absolute top-3 right-3 flex items-center gap-2">
             {creator.mpesa_phone && (
-              <div 
-                className="w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
-                title="Payouts enabled"
-              >
-                <Wallet className="w-5 h-5" style={{ color: themeColor }} />
+              <div className="w-9 h-9 rounded-full bg-white/90 backdrop-blur shadow-lg flex items-center justify-center" title="Payouts enabled">
+                <Wallet className="w-4 h-4" style={{ color: themeColor }} />
               </div>
             )}
-            {links && links.length > 0 && (
-              <div 
-                className="w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
-                title={`${links.length} links`}
-              >
-                <Link2 className="w-5 h-5" style={{ color: themeColor }} />
-              </div>
-            )}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleShare} 
-              className="gap-2 bg-white/90 backdrop-blur border-0 shadow-lg hover:scale-105 transition-transform"
-            >
-              <Share2 className="w-4 h-4" /> Share
+            <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5 bg-white/90 backdrop-blur border-0 shadow-lg text-xs h-9">
+              <Share2 className="w-3.5 h-3.5" /> Share
             </Button>
           </div>
         </div>
 
-        <div className="container mx-auto px-4 -mt-20 relative z-10 pb-12">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Profile Card */}
-              <Card className="shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row gap-6">
-                    {/* Avatar */}
-                    <div className="relative flex-shrink-0">
-                      <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden bg-primary/10 shadow-lg ring-4 ring-background">
-                        {creator.avatar_url ? (
-                          <img src={creator.avatar_url} alt={creator.display_name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-3xl font-bold" style={{ color: themeColor }}>
-                            {creator.display_name.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-                      {creator.is_verified && (
-                        <div 
-                          className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md" 
-                          style={{ backgroundColor: creator.theme_secondary || '#8B9A6B' }}
-                        >
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h1 className="font-display text-2xl md:text-3xl font-bold">{creator.display_name}</h1>
-                          <p className="text-muted-foreground">@{creator.username}</p>
-                        </div>
-                      </div>
-
-                      {creator.tribe_name && (
-                        <Badge variant="secondary" className="mb-3">{creator.tribe_name}</Badge>
-                      )}
-
-                      <p className="text-muted-foreground mb-4">{creator.bio || 'Welcome to my page!'}</p>
-
-                      <div className="flex flex-wrap gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" style={{ color: themeColor }} />
-                          <span className="font-semibold">{creator.total_supporters || 0}</span>
-                          <span className="text-muted-foreground">supporters</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Heart className="w-4 h-4" style={{ color: themeColor }} />
-                          <span className="font-semibold">KSh {Number(creator.total_raised || 0).toLocaleString()}</span>
-                          <span className="text-muted-foreground">raised</span>
-                        </div>
-                      </div>
-                    </div>
+        {/* Profile Info - Compact on mobile */}
+        <div className="px-4 -mt-14 relative z-10 max-w-4xl mx-auto">
+          <div className="flex items-end gap-3 mb-3">
+            <div className="relative flex-shrink-0">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-card shadow-lg ring-4 ring-background">
+                {creator.avatar_url ? (
+                  <img src={creator.avatar_url} alt={creator.display_name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-2xl font-bold bg-primary/10" style={{ color: themeColor }}>
+                    {creator.display_name.charAt(0)}
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Links - Horizontal scroll */}
-              {links && links.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  {links.map((link) => (
-                    <a
-                      key={link.id}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-card border shadow-sm hover:shadow-md transition-all whitespace-nowrap"
-                    >
-                      <span className="text-lg">{link.icon || '🔗'}</span>
-                      <span className="font-medium text-sm">{link.title}</span>
-                      <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                    </a>
-                  ))}
+                )}
+              </div>
+              {creator.is_verified && (
+                <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center shadow-md" style={{ backgroundColor: creator.theme_secondary || '#8B9A6B' }}>
+                  <Check className="w-3.5 h-3.5 text-white" />
                 </div>
               )}
+            </div>
+            <div className="pb-1 min-w-0">
+              <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold truncate">{creator.display_name}</h1>
+              <p className="text-sm text-muted-foreground">@{creator.username}</p>
+            </div>
+          </div>
 
-              {/* Awards & Nominations */}
-              <CreatorAwardsSection
-                creatorId={creator.id}
-                creatorName={creator.display_name}
-                themeColor={themeColor}
-              />
+          {/* Tags & Stats */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {creator.tribe_name && <Badge variant="secondary" className="text-xs">{creator.tribe_name}</Badge>}
+            {(creator as any).category?.name && (
+              <Badge variant="outline" className="text-xs gap-1">
+                {(creator as any).category?.icon} {(creator as any).category?.name}
+              </Badge>
+            )}
+          </div>
 
-              {/* Events Section */}
-              <EventsSection 
-                creatorId={creator.id}
-                creatorName={creator.display_name}
-                themeColor={themeColor}
-              />
+          {creator.bio && <p className="text-sm text-muted-foreground mb-3 line-clamp-3">{creator.bio}</p>}
 
+          <div className="flex items-center gap-4 text-sm mb-4">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-4 h-4" style={{ color: themeColor }} />
+              <span className="font-semibold">{creator.total_supporters || 0}</span>
+              <span className="text-muted-foreground text-xs">supporters</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Heart className="w-4 h-4" style={{ color: themeColor }} />
+              <span className="font-semibold">KSh {Number(creator.total_raised || 0).toLocaleString()}</span>
+              <span className="text-muted-foreground text-xs">raised</span>
+            </div>
+          </div>
+
+          {/* Links - Horizontal scroll */}
+          {links && links.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide -mx-4 px-4">
+              {links.map((link) => (
+                <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card border shadow-sm hover:shadow-md transition-all whitespace-nowrap text-xs">
+                  <span className="text-base">{link.icon || '🔗'}</span>
+                  <span className="font-medium">{link.title}</span>
+                  <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Support CTA - Fixed bottom bar on mobile */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-lg border-t border-border px-4 py-3 safe-area-bottom">
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 gap-2 text-white h-11 rounded-xl"
+              style={{ backgroundColor: themeColor }}
+              onClick={() => {
+                const el = document.getElementById('support-section');
+                el?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              <Heart className="w-4 h-4" fill="white" />
+              Support
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 h-11 rounded-xl"
+              onClick={() => {
+                const el = document.getElementById('gift-section');
+                el?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              <Gift className="w-4 h-4" />
+              Gift
+            </Button>
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="px-4 max-w-4xl mx-auto mt-4">
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Main Column */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Awards */}
+              <CreatorAwardsSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+              
+              {/* Events */}
+              <EventsSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+              
               {/* Campaigns */}
-              <CampaignSection 
-                creatorId={creator.id}
-                creatorName={creator.display_name}
-                themeColor={themeColor}
-              />
-
-              {/* Merchandise Store */}
-              <MerchandiseStore 
-                creatorId={creator.id}
-                creatorName={creator.display_name}
-                themeColor={themeColor}
-              />
+              <CampaignSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+              
+              {/* Merchandise */}
+              <MerchandiseStore creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
             </div>
 
             {/* Support Sidebar */}
             <div className="lg:col-span-1 space-y-4">
-              {/* Gifting Panel */}
-              <GiftingPanel 
-                creatorId={creator.id} 
-                creatorName={creator.display_name}
-                themeColor={themeColor}
-              />
-              
+              {/* Gifting */}
+              <div id="gift-section">
+                <GiftingPanel creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+              </div>
+
               {/* Donation Card */}
-              <div className="sticky top-24">
+              <div id="support-section" className="lg:sticky lg:top-4">
                 <Card className="shadow-lg overflow-hidden">
-                  <div className="h-2" style={{ backgroundColor: themeColor }} />
-                  <CardContent className="p-6">
-                    <div className="text-center mb-6">
-                      <div 
-                        className="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center" 
-                        style={{ backgroundColor: themeColor }}
-                      >
-                        <Heart className="w-7 h-7 text-white" />
+                  <div className="h-1.5" style={{ backgroundColor: themeColor }} />
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="text-center mb-4">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style={{ backgroundColor: themeColor }}>
+                        <Heart className="w-6 h-6 text-white" />
                       </div>
-                      <h2 className="font-display text-xl font-bold">
-                        Support {creator.display_name.split(' ')[0]}
-                      </h2>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Your support means everything
-                      </p>
+                      <h2 className="font-display text-lg font-bold">Support {creator.display_name.split(' ')[0]}</h2>
+                      <p className="text-xs text-muted-foreground mt-1">Your support means everything</p>
                     </div>
 
-                    {/* Amount Selection */}
-                    <div className="grid grid-cols-2 gap-3 mb-4">
+                    {/* Amounts */}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
                       {donationAmounts.map((amount) => (
                         <button
                           key={amount}
                           onClick={() => { setSelectedAmount(amount); setCustomAmount(''); }}
-                          className={`py-3 px-4 rounded-xl font-semibold transition-all ${
-                            selectedAmount === amount
-                              ? 'text-white shadow-lg'
-                              : 'bg-secondary text-foreground hover:bg-secondary/80'
+                          className={`py-2.5 px-3 rounded-xl font-semibold text-sm transition-all ${
+                            selectedAmount === amount ? 'text-white shadow-lg' : 'bg-secondary text-foreground hover:bg-secondary/80'
                           }`}
                           style={selectedAmount === amount ? { backgroundColor: themeColor } : undefined}
                         >
@@ -396,59 +329,28 @@ const CreatorPage = () => {
                       ))}
                     </div>
 
-                    {/* Custom Amount */}
-                    <Input
-                      type="number"
-                      placeholder="Custom amount (KSh)"
-                      value={customAmount}
-                      onChange={(e) => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
-                      className="mb-3"
-                    />
+                    <Input type="number" placeholder="Custom amount (KSh)" value={customAmount}
+                      onChange={(e) => { setCustomAmount(e.target.value); setSelectedAmount(null); }} className="mb-2 h-10 text-sm" />
 
-                    {/* Phone Number */}
-                    <div className="relative mb-3">
+                    <div className="relative mb-2">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        type="tel"
-                        placeholder="M-PESA number (07...)"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="pl-10"
-                      />
+                      <Input type="tel" placeholder="M-PESA number (07...)" value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)} className="pl-10 h-10 text-sm" />
                     </div>
 
-                    {/* Name */}
-                    <Input
-                      placeholder="Your name (optional)"
-                      value={donorName}
-                      onChange={(e) => setDonorName(e.target.value)}
-                      className="mb-3"
-                    />
+                    <Input placeholder="Your name (optional)" value={donorName}
+                      onChange={(e) => setDonorName(e.target.value)} className="mb-2 h-10 text-sm" />
 
-                    {/* Message */}
-                    <Textarea
-                      placeholder="Leave a message... 💚 (optional)"
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      rows={3}
-                      className="mb-4"
-                    />
+                    <Textarea placeholder="Leave a message... 💚 (optional)" value={message}
+                      onChange={(e) => setMessage(e.target.value)} rows={2} className="mb-3 text-sm" />
 
-                    {/* Submit */}
-                    <Button
-                      className="w-full gap-2 text-white"
-                      size="lg"
-                      style={{ backgroundColor: themeColor }}
-                      onClick={handleDonate}
-                      disabled={initiateDonation.isPending}
-                    >
+                    <Button className="w-full gap-2 text-white h-11" size="lg" style={{ backgroundColor: themeColor }}
+                      onClick={handleDonate} disabled={initiateDonation.isPending}>
                       <Heart className="w-5 h-5" />
                       Support with KSh {customAmount || selectedAmount || 0}
                     </Button>
 
-                    <p className="text-xs text-center text-muted-foreground mt-4">
-                      Secure payment via M-PESA STK Push
-                    </p>
+                    <p className="text-[10px] text-center text-muted-foreground mt-3">Secure payment via M-PESA STK Push</p>
                   </CardContent>
                 </Card>
               </div>
@@ -457,7 +359,6 @@ const CreatorPage = () => {
         </div>
       </main>
 
-      {/* Payment Processing Modal */}
       <PaymentProcessingModal
         open={paymentDialog}
         onClose={resetPayment}
