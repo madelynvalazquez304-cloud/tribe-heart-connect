@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Users, Share2, Check, ExternalLink, Phone, Gift, Wallet, Link2 } from 'lucide-react';
+import { Heart, Users, Share2, Check, ExternalLink, Phone, Gift, Wallet } from 'lucide-react';
 import GiftingPanel from '@/components/GiftingPanel';
 import GiftAnimationOverlay from '@/components/GiftAnimationOverlay';
 import ProfileLoadingSpinner from '@/components/ProfileLoadingSpinner';
@@ -30,9 +30,8 @@ const CreatorPage = () => {
   const [message, setMessage] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
   const [paymentDialog, setPaymentDialog] = useState(false);
-  const [checkoutRequestId, setCheckoutRequestId] = useState('');
+  const [_checkoutRequestId, setCheckoutRequestId] = useState('');
   const [recordId, setRecordId] = useState('');
-  const [activeTab, setActiveTab] = useState<'support' | 'about'>('support');
 
   const { data: creator, isLoading, error } = useQuery({
     queryKey: ['creator', username],

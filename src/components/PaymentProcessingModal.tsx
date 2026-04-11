@@ -2,7 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Phone, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
 
 export type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
 
