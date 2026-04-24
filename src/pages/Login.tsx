@@ -120,6 +120,42 @@ const Login = () => {
 
         {/* Form */}
         <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
+          {twoFa?.required ? (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                  <ShieldCheck className="w-7 h-7 text-primary" />
+                </div>
+                <h2 className="text-xl font-bold">Verify it's you</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  We emailed a 6-digit code to <strong>{twoFa.email}</strong>.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Verification code</Label>
+                <Input
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={twoFa.code}
+                  onChange={(e) => setTwoFa({ ...twoFa, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                  placeholder="123456"
+                  className="text-center tracking-[10px] text-2xl font-bold"
+                  autoFocus
+                />
+              </div>
+              <Button onClick={verify2fa} disabled={twoFa.verifying || twoFa.code.length !== 6} className="w-full" variant="hero">
+                {twoFa.verifying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : 'Verify & sign in'}
+              </Button>
+              <div className="flex items-center justify-between text-sm">
+                <button type="button" onClick={resend2fa} disabled={twoFa.sending} className="text-primary hover:underline">
+                  {twoFa.sending ? 'Sending…' : 'Resend code'}
+                </button>
+                <button type="button" onClick={() => setTwoFa(null)} className="text-muted-foreground hover:text-foreground">
+                  Use another account
+                </button>
+              </div>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -199,6 +235,7 @@ const Login = () => {
               )}
             </Button>
           </form>
+          )}
 
           <div className="mt-6 text-center">
             <p className="text-muted-foreground">
