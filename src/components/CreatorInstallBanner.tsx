@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { X, Download, Smartphone, Share, PlusSquare, MoreVertical } from 'lucide-react';
+import { X, Download, Smartphone, Share, PlusSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const CreatorInstallBanner = () => {
   const { isCreator } = useAuth();
-  const { isInstallable, isInstalled, isIOS, promptInstall, dismiss, dismissed } = useInstallPrompt();
+  const { isInstallable, isInstalled, isIOS, isIOSSafari, promptInstall, dismiss, dismissed } = useInstallPrompt();
+  const location = useLocation();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 
-  // Only show for creators who haven't installed
+  // Only show for creators who haven't installed.
+  // We show on every creator page but it is most prominent on the dashboard.
   if (!isCreator || isInstalled || dismissed || !isInstallable) return null;
+  const onDashboard = location.pathname.startsWith('/dashboard');
 
   const handleInstall = async () => {
     if (isIOS) {
@@ -43,10 +47,14 @@ const CreatorInstallBanner = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-foreground text-sm">
-                  Install TribeYangu
+                  {isIOSSafari ? 'Add TribeYangu to Home Screen' : 'Install TribeYangu'}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Get instant access to your dashboard, notifications & earnings right from your home screen
+                  {isIOSSafari
+                    ? 'Tap the Share icon in Safari, then "Add to Home Screen" for one-tap access to earnings & notifications.'
+                    : onDashboard
+                      ? 'One-tap access to your creator dashboard, M-PESA payouts, and live fan alerts.'
+                      : 'Install the app for instant access to your dashboard, notifications and earnings.'}
                 </p>
               </div>
             </div>
@@ -57,8 +65,8 @@ const CreatorInstallBanner = () => {
                 size="sm"
                 className="flex-1 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground gap-2 rounded-xl"
               >
-                <Download className="w-4 h-4" />
-                Install Now
+                {isIOSSafari ? <Share className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+                {isIOSSafari ? 'Show me how' : 'Install Now'}
               </Button>
               <Button
                 onClick={dismiss}

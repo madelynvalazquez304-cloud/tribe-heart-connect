@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Heart, Mail, Lock, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,12 +13,14 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // 2FA challenge state
+  const [twoFa, setTwoFa] = useState<{ required: boolean; userId: string; email: string; sending: boolean; verifying: boolean; code: string } | null>(null);
   const { signIn, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
+  // Redirect if already logged in (and 2FA not pending)
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && !twoFa?.required) {
       if (isAdmin) {
         navigate('/admin');
       } else if (isCreator) {
@@ -27,7 +29,7 @@ const Login = () => {
         navigate('/account');
       }
     }
-  }, [user, isAdmin, isCreator, authLoading, navigate]);
+  }, [user, isAdmin, isCreator, authLoading, navigate, twoFa]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +43,64 @@ const Login = () => {
       return;
     }
 
+    // Check whether this account has email 2FA enabled — if so, sign back out
+    // and require a one-time code before proceeding.
+    try {
+      const { data: { user: signedIn } } = await supabase.auth.getUser();
+      if (signedIn) {
+        const { data: tfa } = await supabase
+          .from('user_2fa_settings')
+          .select('is_enabled, method, email')
+          .eq('user_id', signedIn.id)
+          .maybeSingle();
+        if (tfa?.is_enabled && tfa?.method === 'email') {
+          const target = tfa.email || signedIn.email!;
+          setTwoFa({ required: true, userId: signedIn.id, email: target, sending: true, verifying: false, code: '' });
+          // Sign out so the session isn't usable until code is verified
+          await supabase.auth.signOut();
+          await supabase.functions.invoke('send-2fa-code', {
+            body: { user_id: signedIn.id, email: target },
+          });
+          setTwoFa((s) => s ? { ...s, sending: false } : s);
+          toast.success(`Verification code sent to ${target}`);
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('2FA pre-check failed', e);
+    }
+
     toast.success('Welcome back!');
     // Navigation will happen via useEffect when auth state updates
+  };
+
+  const verify2fa = async () => {
+    if (!twoFa) return;
+    setTwoFa({ ...twoFa, verifying: true });
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-2fa-code', {
+        body: { user_id: twoFa.userId, code: twoFa.code },
+      });
+      if (error) throw error;
+      if (!(data as any)?.ok) throw new Error((data as any)?.error || 'Invalid code');
+      // Re-authenticate now that the code is verified
+      const { error: signErr } = await signIn(email, password);
+      if (signErr) throw signErr;
+      toast.success('Verified! Welcome back.');
+      setTwoFa(null);
+    } catch (e: any) {
+      toast.error(e.message || 'Verification failed');
+      setTwoFa((s) => s ? { ...s, verifying: false } : s);
+    }
+  };
+
+  const resend2fa = async () => {
+    if (!twoFa) return;
+    setTwoFa({ ...twoFa, sending: true });
+    await supabase.functions.invoke('send-2fa-code', { body: { user_id: twoFa.userId, email: twoFa.email } });
+    setTwoFa((s) => s ? { ...s, sending: false } : s);
+    toast.success('New code sent');
   };
 
   return (
@@ -62,6 +120,42 @@ const Login = () => {
 
         {/* Form */}
         <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
+          {twoFa?.required ? (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                  <ShieldCheck className="w-7 h-7 text-primary" />
+                </div>
+                <h2 className="text-xl font-bold">Verify it's you</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  We emailed a 6-digit code to <strong>{twoFa.email}</strong>.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Verification code</Label>
+                <Input
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={twoFa.code}
+                  onChange={(e) => setTwoFa({ ...twoFa, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                  placeholder="123456"
+                  className="text-center tracking-[10px] text-2xl font-bold"
+                  autoFocus
+                />
+              </div>
+              <Button onClick={verify2fa} disabled={twoFa.verifying || twoFa.code.length !== 6} className="w-full" variant="hero">
+                {twoFa.verifying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : 'Verify & sign in'}
+              </Button>
+              <div className="flex items-center justify-between text-sm">
+                <button type="button" onClick={resend2fa} disabled={twoFa.sending} className="text-primary hover:underline">
+                  {twoFa.sending ? 'Sending…' : 'Resend code'}
+                </button>
+                <button type="button" onClick={() => setTwoFa(null)} className="text-muted-foreground hover:text-foreground">
+                  Use another account
+                </button>
+              </div>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -141,6 +235,7 @@ const Login = () => {
               )}
             </Button>
           </form>
+          )}
 
           <div className="mt-6 text-center">
             <p className="text-muted-foreground">

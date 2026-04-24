@@ -13,10 +13,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, Wallet, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { notify } from '@/lib/notify';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CreatorWithdrawals = () => {
   const queryClient = useQueryClient();
   const { data: creator } = useMyCreator();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState('');
 
@@ -50,14 +53,24 @@ const CreatorWithdrawals = () => {
     mutationFn: async (amount: number) => {
       if (!creator) throw new Error('No creator');
       const fee = 50; // Fixed fee
-      const { error } = await supabase.from('withdrawals').insert({
+      const net = amount - fee;
+      const { data: row, error } = await supabase.from('withdrawals').insert({
         creator_id: creator.id,
         amount,
         fee,
-        net_amount: amount - fee,
+        net_amount: net,
         payment_method: 'mpesa'
-      });
+      }).select('id').maybeSingle();
       if (error) throw error;
+      // Fire-and-forget confirmation email to the creator
+      if (user?.email) {
+        notify('withdrawal_requested', user.email, {
+          recipient_name: creator.display_name || creator.username,
+          amount: net.toLocaleString(),
+          currency: 'KES',
+          receipt: row?.id?.slice(0, 8).toUpperCase() || 'PENDING',
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['creator-withdrawals'] });

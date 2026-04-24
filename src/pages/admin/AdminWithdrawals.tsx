@@ -28,6 +28,7 @@ import { Search, Check, X, Loader2, Wallet, Phone, CreditCard } from 'lucide-rea
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Json } from '@/integrations/supabase/types';
+import { notify } from '@/lib/notify';
 
 type WithdrawalStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'rejected';
 
@@ -87,6 +88,36 @@ const AdminWithdrawals = () => {
             description: 'Withdrawal payout'
           });
         }
+      }
+
+      // Send transactional email to the creator about approval / rejection / completion
+      try {
+        const w: any = withdrawals?.find((x: any) => x.id === id);
+        if (w) {
+          const { data: prof } = await supabase
+            .from('creators')
+            .select('user_id, display_name, username, profiles:user_id(email)')
+            .eq('id', w.creator_id)
+            .maybeSingle();
+          const email = (prof as any)?.profiles?.email;
+          if (email) {
+            const recipient_name = (prof as any)?.display_name || (prof as any)?.username || 'there';
+            const common = {
+              recipient_name,
+              amount: Number(w.net_amount || w.amount).toLocaleString(),
+              currency: 'KES',
+              receipt: (reference || id.slice(0, 8)).toUpperCase(),
+              date: new Date().toLocaleDateString(),
+            };
+            if (status === 'approved' || status === 'completed') {
+              await notify('withdrawal_approved', email, common);
+            } else if (status === 'rejected') {
+              await notify('withdrawal_rejected', email, { ...common, reason: reason || 'Not specified' });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('withdrawal notification failed', e);
       }
     },
     onSuccess: () => {

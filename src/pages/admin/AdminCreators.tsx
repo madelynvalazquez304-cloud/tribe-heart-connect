@@ -55,6 +55,24 @@ const AdminCreators = () => {
       }
       const { error } = await supabase.from('creators').update(updates).eq('id', id);
       if (error) throw error;
+
+      // Send a "creator approved" email when admin approves a creator
+      if (status === 'approved') {
+        try {
+          const { data: prof } = await supabase
+            .from('creators')
+            .select('user_id, display_name, username, profiles:user_id(email)')
+            .eq('id', id)
+            .maybeSingle();
+          const email = (prof as any)?.profiles?.email;
+          if (email) {
+            await (await import('@/lib/notify')).notify('creator_approved', email, {
+              recipient_name: (prof as any)?.display_name || (prof as any)?.username || 'Creator',
+              action_url: `${window.location.origin}/dashboard`,
+            });
+          }
+        } catch (e) { console.warn('creator_approved email failed', e); }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-creators'] });
