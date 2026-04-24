@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, Percent, DollarSign, Wallet, Truck, AlertCircle, Globe, Image, Upload, Trash2, Mail, Shield, Key } from 'lucide-react';
+import { Loader2, Save, Percent, DollarSign, Wallet, Truck, AlertCircle, Globe, Image, Upload, Trash2, Mail, Shield, Key, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 
@@ -65,6 +65,32 @@ const AdminSettings = () => {
   };
 
   const handleSave = () => { updateSettings.mutate(settings); };
+
+  const [testEmail, setTestEmail] = useState('');
+  const [testing, setTesting] = useState(false);
+  const handleTestSmtp = async () => {
+    if (!testEmail) { toast.error('Enter a recipient email'); return; }
+    setTesting(true);
+    try {
+      // Persist current SMTP settings before testing so the function reads them.
+      await updateSettings.mutateAsync(settings);
+      const { data, error } = await supabase.functions.invoke('send-smtp-email', {
+        body: {
+          to: testEmail,
+          subject: `${settings.site_name || 'TribeYangu'} – SMTP test`,
+          html: `<div style="font-family:sans-serif;padding:24px;"><h2>SMTP works! 🎉</h2><p>This is a test from your admin panel. Encryption: <b>${settings.smtp_encryption || 'tls'}</b>, host <b>${settings.smtp_host}:${settings.smtp_port}</b>.</p></div>`,
+          test: true,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success('Test email dispatched. Check the inbox.');
+    } catch (e: any) {
+      toast.error(`SMTP test failed: ${e.message || e}`);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -351,10 +377,21 @@ const AdminSettings = () => {
                 <Mail className="w-5 h-5 text-primary" />
                 SMTP Email Configuration
               </CardTitle>
-              <CardDescription>Configure SMTP for sending emails (password reset, notifications)</CardDescription>
+              <CardDescription>Configure your own SMTP server (Gmail, cPanel, Zoho, Hostinger, etc.). Supports STARTTLS, implicit SSL and shared-hosting handshakes.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>SMTP Notifications</Label>
+                  <select
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={settings.smtp_enabled === false || settings.smtp_enabled === 'false' ? 'false' : 'true'}
+                    onChange={(e) => handleChange('smtp_enabled', e.target.value === 'true')}
+                  >
+                    <option value="true">Enabled — send all notifications via SMTP</option>
+                    <option value="false">Disabled — skip outgoing emails</option>
+                  </select>
+                </div>
                 <div className="space-y-2">
                   <Label>SMTP Host</Label>
                   <Input value={settings.smtp_host || ''} onChange={(e) => handleChange('smtp_host', e.target.value)} placeholder="smtp.gmail.com" />
@@ -362,6 +399,18 @@ const AdminSettings = () => {
                 <div className="space-y-2">
                   <Label>SMTP Port</Label>
                   <Input type="number" value={settings.smtp_port || 587} onChange={(e) => handleChange('smtp_port', parseInt(e.target.value))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Encryption</Label>
+                  <select
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={settings.smtp_encryption || 'tls'}
+                    onChange={(e) => handleChange('smtp_encryption', e.target.value)}
+                  >
+                    <option value="tls">STARTTLS (port 587, recommended)</option>
+                    <option value="ssl">Implicit SSL/TLS (port 465)</option>
+                    <option value="none">None (plain, not recommended)</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label>SMTP Username</Label>
@@ -379,6 +428,28 @@ const AdminSettings = () => {
                   <Label>From Name</Label>
                   <Input value={settings.smtp_from_name || ''} onChange={(e) => handleChange('smtp_from_name', e.target.value)} placeholder="TribeYangu" />
                 </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Reply-To (optional)</Label>
+                  <Input value={settings.smtp_reply_to || ''} onChange={(e) => handleChange('smtp_reply_to', e.target.value)} placeholder="support@yoursite.com" />
+                </div>
+              </div>
+              <div className="mt-6 border-t pt-6">
+                <Label className="mb-2 block">Test SMTP delivery</Label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    type="email"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                  <Button type="button" onClick={handleTestSmtp} disabled={testing} className="gap-2">
+                    {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Send test email
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Saves current settings then sends a styled test using the configured handshake (TLS / SSL).
+                </p>
               </div>
             </CardContent>
           </Card>
