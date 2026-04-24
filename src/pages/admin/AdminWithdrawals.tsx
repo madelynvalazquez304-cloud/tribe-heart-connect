@@ -28,6 +28,7 @@ import { Search, Check, X, Loader2, Wallet, Phone, CreditCard } from 'lucide-rea
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Json } from '@/integrations/supabase/types';
+import { notify } from '@/lib/notify';
 
 type WithdrawalStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'rejected';
 
