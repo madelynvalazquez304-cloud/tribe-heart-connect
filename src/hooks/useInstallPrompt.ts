@@ -25,7 +25,8 @@ export const useInstallPrompt = () => {
     const dismissedAt = localStorage.getItem('pwa-install-dismissed');
     if (dismissedAt) {
       const hours = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60);
-      if (hours < 24) {
+      // Shorter cool-off so creators get re-prompted to install the shortcut
+      if (hours < 6) {
         setDismissed(true);
       } else {
         localStorage.removeItem('pwa-install-dismissed');
@@ -72,11 +73,17 @@ export const useInstallPrompt = () => {
 
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
+  // Detect iOS Safari (vs in-app browsers like Chrome/Firefox on iOS which can't install)
+  const ua = navigator.userAgent;
+  const isIOSSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
 
   return {
-    isInstallable: isInstallable || (isIOS && !isInstalled),
+    // On iOS the OS never fires `beforeinstallprompt`, so we treat Safari as
+    // installable and surface a manual "Add to Home Screen" guide instead.
+    isInstallable: isInstallable || (isIOSSafari && !isInstalled),
     isInstalled,
     isIOS,
+    isIOSSafari,
     isAndroid,
     dismissed,
     promptInstall,
