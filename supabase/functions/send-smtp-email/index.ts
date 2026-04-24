@@ -18,6 +18,86 @@ interface Body {
   test?: boolean; // when true, will not log to notification_logs
 }
 
+interface SmtpConfig {
+  enabled: boolean;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName: string;
+  replyTo: string;
+  encryption: "tls" | "ssl" | "none";
+}
+
+function normalizeSmtpConfig(rows: any[]): SmtpConfig {
+  const storedConfig = rows.find((r) => r.key === "smtp_config")?.value;
+  const source = storedConfig && typeof storedConfig === "object"
+    ? storedConfig
+    : Object.fromEntries((rows ?? []).map((row) => [row.key, row.value]));
+
+  const rawEncryption = String(source.encryption ?? source.smtp_encryption ?? "tls").toLowerCase();
+  const encryption: SmtpConfig["encryption"] = rawEncryption === "ssl" || rawEncryption === "none" ? rawEncryption : "tls";
+  const rawPort = Number(source.port ?? source.smtp_port);
+  let port = Number.isFinite(rawPort) && rawPort > 0
+    ? rawPort
+    : encryption === "ssl"
+      ? 465
+      : encryption === "none"
+        ? 25
+        : 587;
+
+  if (encryption === "ssl" && port === 587) port = 465;
+  if (encryption === "tls" && port === 465) port = 587;
+
+  const username = String(source.username ?? source.smtp_username ?? "").trim();
+
+  return {
+    enabled: !(source.enabled === false || source.smtp_enabled === false || source.enabled === "false" || source.smtp_enabled === "false"),
+    host: String(source.host ?? source.smtp_host ?? "").trim(),
+    port,
+    username,
+    password: String(source.password ?? source.smtp_password ?? ""),
+    fromEmail: String(source.fromEmail ?? source.smtp_from_email ?? username).trim(),
+    fromName: String(source.fromName ?? source.smtp_from_name ?? "TribeYangu").trim() || "TribeYangu",
+    replyTo: String(source.replyTo ?? source.smtp_reply_to ?? "").trim(),
+    encryption,
+  };
+}
+
+function buildTransportCandidates(config: SmtpConfig) {
+  const base = {
+    host: config.host,
+    port: config.port,
+    auth: { user: config.username, pass: config.password },
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: "TLSv1",
+    },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
+  };
+
+  if (config.encryption === "ssl") {
+    return [
+      { ...base, secure: true, requireTLS: false },
+      { ...base, secure: false, requireTLS: true },
+    ];
+  }
+
+  if (config.encryption === "none") {
+    return [
+      { ...base, secure: false, requireTLS: false },
+    ];
+  }
+
+  return [
+    { ...base, secure: false, requireTLS: true },
+    { ...base, secure: true, requireTLS: false },
+  ];
+}
+
 function pickValue(rows: any[], key: string, fallback: any = ""): any {
   const row = rows.find((r) => r.key === key);
   if (!row) return fallback;
@@ -31,7 +111,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const body = (await req.json()) as Body;
+    const rawBody = await req.text();
+    const body = (rawBody ? JSON.parse(rawBody) : {}) as Body;
     if (!body?.to || !body?.subject || (!body.html && !body.text)) {
       return new Response(JSON.stringify({ error: "to, subject and html|text required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -49,61 +130,45 @@ Deno.serve(async (req) => {
       .eq("category", "email");
     if (sErr) throw sErr;
 
-    const enabled = pickValue(settings ?? [], "smtp_enabled", true);
-    if (enabled === false || enabled === "false") {
+    const config = normalizeSmtpConfig(settings ?? []);
+    if (!config.enabled) {
       return new Response(JSON.stringify({ skipped: true, reason: "smtp_disabled" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const host = String(pickValue(settings ?? [], "smtp_host", ""));
-    const port = Number(pickValue(settings ?? [], "smtp_port", 587)) || 587;
-    const username = String(pickValue(settings ?? [], "smtp_username", ""));
-    const password = String(pickValue(settings ?? [], "smtp_password", ""));
-    const fromEmail = String(pickValue(settings ?? [], "smtp_from_email", username));
-    const fromName = String(pickValue(settings ?? [], "smtp_from_name", "TribeYangu"));
-    const replyTo = body.replyTo || String(pickValue(settings ?? [], "smtp_reply_to", ""));
-    const encryption = String(pickValue(settings ?? [], "smtp_encryption", "tls")).toLowerCase();
-
-    if (!host || !username || !password || !fromEmail) {
+    if (!config.host || !config.username || !config.password || !config.fromEmail) {
       return new Response(JSON.stringify({ error: "SMTP not configured. Set host, username, password, from email in admin settings." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Build connection: implicit TLS for SSL (465), STARTTLS for tls (587), plain otherwise.
-    const useImplicitTls = encryption === "ssl" || port === 465;
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: useImplicitTls, // true for 465 (implicit SSL), false for 587 (STARTTLS)
-      auth: { user: username, pass: password },
-      requireTLS: !useImplicitTls && encryption !== "none",
-      // Tolerant of shared-hosting certs (cPanel/Namecheap/Hostinger/etc.)
-      tls: {
-        rejectUnauthorized: false,
-        minVersion: "TLSv1",
-      },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000,
-    });
-
     const recipients = Array.isArray(body.to) ? body.to : [body.to];
 
-    await transporter.sendMail({
-      from: `${fromName} <${fromEmail}>`,
-      to: recipients,
-      subject: body.subject,
-      text: body.text || body.subject,
-      html: body.html,
-      replyTo: replyTo || undefined,
-    });
-    try { transporter.close(); } catch (_) { /* ignore */ }
+    let lastError: unknown = null;
+    for (const candidate of buildTransportCandidates(config)) {
+      const transporter = nodemailer.createTransport(candidate);
+      try {
+        await transporter.sendMail({
+          from: `${config.fromName} <${config.fromEmail}>`,
+          to: recipients,
+          subject: body.subject,
+          text: body.text || body.subject,
+          html: body.html,
+          replyTo: body.replyTo || config.replyTo || undefined,
+        });
+        try { transporter.close(); } catch (_) { /* ignore */ }
 
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+        return new Response(JSON.stringify({ ok: true, connection_mode: candidate.secure ? "ssl" : candidate.requireTLS ? "tls" : "none", port: config.port }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (error) {
+        lastError = error;
+        try { transporter.close(); } catch (_) { /* ignore */ }
+      }
+    }
+
+    throw lastError ?? new Error("SMTP connection failed");
   } catch (e) {
     console.error("send-smtp-email error", e);
     return new Response(JSON.stringify({ error: String(e?.message || e) }), {
