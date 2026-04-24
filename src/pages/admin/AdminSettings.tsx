@@ -19,11 +19,88 @@ interface Setting {
   category: string | null;
 }
 
+interface SmtpSettingsShape {
+  smtp_enabled: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_encryption: 'tls' | 'ssl' | 'none';
+  smtp_username: string;
+  smtp_password: string;
+  smtp_from_email: string;
+  smtp_from_name: string;
+  smtp_reply_to: string;
+}
+
+const SMTP_SETTING_KEYS = [
+  'smtp_enabled',
+  'smtp_host',
+  'smtp_port',
+  'smtp_encryption',
+  'smtp_username',
+  'smtp_password',
+  'smtp_from_email',
+  'smtp_from_name',
+  'smtp_reply_to',
+] as const;
+
+const getDefaultPortForEncryption = (encryption: SmtpSettingsShape['smtp_encryption']) => {
+  if (encryption === 'ssl') return 465;
+  if (encryption === 'none') return 25;
+  return 587;
+};
+
+const normalizeSmtpSettings = (raw: Record<string, any>, fallbackName = 'TribeYangu'): SmtpSettingsShape => {
+  const rawEncryption = String(raw.smtp_encryption ?? raw.encryption ?? 'tls').toLowerCase();
+  const smtp_encryption: SmtpSettingsShape['smtp_encryption'] = rawEncryption === 'ssl' || rawEncryption === 'none' ? rawEncryption : 'tls';
+
+  const parsedPort = Number(raw.smtp_port ?? raw.port);
+  let smtp_port = Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : getDefaultPortForEncryption(smtp_encryption);
+
+  if (smtp_encryption === 'ssl' && smtp_port === 587) smtp_port = 465;
+  if (smtp_encryption === 'tls' && smtp_port === 465) smtp_port = 587;
+
+  const smtp_username = String(raw.smtp_username ?? raw.username ?? '').trim();
+  const smtp_from_email = String(raw.smtp_from_email ?? raw.fromEmail ?? smtp_username).trim();
+  const smtp_from_name = String(raw.smtp_from_name ?? raw.fromName ?? fallbackName).trim() || fallbackName;
+
+  return {
+    smtp_enabled: raw.smtp_enabled === false || raw.smtp_enabled === 'false' ? false : true,
+    smtp_host: String(raw.smtp_host ?? raw.host ?? '').trim(),
+    smtp_port,
+    smtp_encryption,
+    smtp_username,
+    smtp_password: String(raw.smtp_password ?? raw.password ?? ''),
+    smtp_from_email,
+    smtp_from_name,
+    smtp_reply_to: String(raw.smtp_reply_to ?? raw.replyTo ?? '').trim(),
+  };
+};
+
+const buildSmtpSettingsPatch = (allSettings: Record<string, any>) => {
+  const normalized = normalizeSmtpSettings(allSettings, String(allSettings.site_name || 'TribeYangu'));
+
+  return {
+    ...normalized,
+    smtp_config: {
+      enabled: normalized.smtp_enabled,
+      host: normalized.smtp_host,
+      port: normalized.smtp_port,
+      encryption: normalized.smtp_encryption,
+      username: normalized.smtp_username,
+      password: normalized.smtp_password,
+      fromEmail: normalized.smtp_from_email,
+      fromName: normalized.smtp_from_name,
+      replyTo: normalized.smtp_reply_to,
+    },
+  };
+};
+
 const AdminSettings = () => {
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [dirtyKeys, setDirtyKeys] = useState<string[]>([]);
 
   const { data: platformSettings, isLoading } = useQuery({
     queryKey: ['platform-settings'],
@@ -38,33 +115,91 @@ const AdminSettings = () => {
     if (platformSettings) {
       const settingsMap: Record<string, any> = {};
       platformSettings.forEach(s => { settingsMap[s.key] = s.value; });
-      setSettings(settingsMap);
+      const smtpConfig = settingsMap.smtp_config && typeof settingsMap.smtp_config === 'object'
+        ? normalizeSmtpSettings({ ...settingsMap, ...(settingsMap.smtp_config as Record<string, any>) }, String(settingsMap.site_name || 'TribeYangu'))
+        : normalizeSmtpSettings(settingsMap, String(settingsMap.site_name || 'TribeYangu'));
+
+      setSettings({
+        ...settingsMap,
+        ...smtpConfig,
+      });
+      setDirtyKeys([]);
+      setHasChanges(false);
     }
   }, [platformSettings]);
 
   const updateSettings = useMutation({
-    mutationFn: async (updates: Record<string, any>) => {
-      const promises = Object.entries(updates).map(([key, value]) =>
-        supabase.from('platform_settings').update({ value, updated_at: new Date().toISOString() }).eq('key', key)
-      );
+    mutationFn: async ({ updates }: { updates: Record<string, any>; savedKeys: string[] }) => {
+      const now = new Date().toISOString();
+      const preparedUpdates = { ...updates, ...buildSmtpSettingsPatch({ ...settings, ...updates }) };
+      const existingSettings = new Map((platformSettings || []).map((setting) => [setting.key, setting]));
+
+      const promises = Object.entries(preparedUpdates).map(([key, value]) => {
+        const existing = existingSettings.get(key);
+        if (existing) {
+          return supabase
+            .from('platform_settings')
+            .update({ value, updated_at: now })
+            .eq('key', key);
+        }
+
+        const category = key === 'smtp_config' || SMTP_SETTING_KEYS.includes(key as typeof SMTP_SETTING_KEYS[number]) ? 'email' : 'general';
+        return supabase
+          .from('platform_settings')
+          .insert({ key, value, category, description: null });
+      });
+
       const results = await Promise.all(promises);
       results.forEach(({ error }) => { if (error) throw error; });
+      return preparedUpdates;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['platform-settings'] });
       queryClient.invalidateQueries({ queryKey: ['site-settings'] });
       toast.success('Settings saved');
-      setHasChanges(false);
+      setDirtyKeys((previous) => {
+        const remaining = previous.filter((key) => !variables.savedKeys.includes(key));
+        setHasChanges(remaining.length > 0);
+        return remaining;
+      });
     },
     onError: (error: Error) => { toast.error(error.message); }
   });
 
   const handleChange = (key: string, value: any) => {
+    if (key === 'smtp_encryption') {
+      const normalized = normalizeSmtpSettings({ ...settings, smtp_encryption: value }, String(settings.site_name || 'TribeYangu'));
+      setSettings((prev) => ({
+        ...prev,
+        smtp_encryption: normalized.smtp_encryption,
+        smtp_port: normalized.smtp_port,
+      }));
+      setDirtyKeys((prev) => Array.from(new Set([...prev, 'smtp_encryption', 'smtp_port'])));
+      setHasChanges(true);
+      return;
+    }
+
     setSettings(prev => ({ ...prev, [key]: value }));
+    setDirtyKeys((prev) => Array.from(new Set([...prev, key])));
     setHasChanges(true);
   };
 
-  const handleSave = () => { updateSettings.mutate(settings); };
+  const persistSmtpSettings = async () => {
+    const smtpPatch = buildSmtpSettingsPatch(settings);
+    setSettings((prev) => ({ ...prev, ...smtpPatch }));
+    await updateSettings.mutateAsync({
+      updates: smtpPatch,
+      savedKeys: [...SMTP_SETTING_KEYS, 'smtp_config'],
+    });
+    return smtpPatch;
+  };
+
+  const handleSave = () => {
+    updateSettings.mutate({
+      updates: settings,
+      savedKeys: Object.keys(settings),
+    });
+  };
 
   const [testEmail, setTestEmail] = useState('');
   const [testing, setTesting] = useState(false);
@@ -72,13 +207,12 @@ const AdminSettings = () => {
     if (!testEmail) { toast.error('Enter a recipient email'); return; }
     setTesting(true);
     try {
-      // Persist current SMTP settings before testing so the function reads them.
-      await updateSettings.mutateAsync(settings);
+      const smtpPatch = await persistSmtpSettings();
       const { data, error } = await supabase.functions.invoke('send-smtp-email', {
         body: {
           to: testEmail,
           subject: `${settings.site_name || 'TribeYangu'} – SMTP test`,
-          html: `<div style="font-family:sans-serif;padding:24px;"><h2>SMTP works! 🎉</h2><p>This is a test from your admin panel. Encryption: <b>${settings.smtp_encryption || 'tls'}</b>, host <b>${settings.smtp_host}:${settings.smtp_port}</b>.</p></div>`,
+          html: `<div style="font-family:sans-serif;padding:24px;"><h2>SMTP works! 🎉</h2><p>This is a test from your admin panel. Encryption: <b>${smtpPatch.smtp_encryption}</b>, host <b>${smtpPatch.smtp_host}:${smtpPatch.smtp_port}</b>.</p></div>`,
           test: true,
         },
       });
@@ -398,7 +532,7 @@ const AdminSettings = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>SMTP Port</Label>
-                  <Input type="number" value={settings.smtp_port || 587} onChange={(e) => handleChange('smtp_port', parseInt(e.target.value))} />
+                  <Input type="number" value={settings.smtp_port || 587} onChange={(e) => handleChange('smtp_port', e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
                 </div>
                 <div className="space-y-2">
                   <Label>Encryption</Label>
@@ -448,7 +582,7 @@ const AdminSettings = () => {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Saves current settings then sends a styled test using the configured handshake (TLS / SSL).
+                  SMTP is saved as its own config first, then tested with the matching handshake and corrected default port.
                 </p>
               </div>
             </CardContent>
