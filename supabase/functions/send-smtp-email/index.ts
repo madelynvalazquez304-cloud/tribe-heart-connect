@@ -68,7 +68,6 @@ function normalizeSmtpConfig(rows: any[]): SmtpConfig {
 function buildTransportCandidates(config: SmtpConfig) {
   const base = {
     host: config.host,
-    port: config.port,
     auth: { user: config.username, pass: config.password },
     tls: {
       rejectUnauthorized: false,
@@ -81,20 +80,23 @@ function buildTransportCandidates(config: SmtpConfig) {
 
   if (config.encryption === "ssl") {
     return [
-      { ...base, secure: true, requireTLS: false },
-      { ...base, secure: false, requireTLS: true },
+      { ...base, port: config.port, secure: true, requireTLS: false },
+      { ...base, port: 465, secure: true, requireTLS: false },
+      { ...base, port: 587, secure: false, requireTLS: true },
     ];
   }
 
   if (config.encryption === "none") {
     return [
-      { ...base, secure: false, requireTLS: false },
+      { ...base, port: config.port, secure: false, requireTLS: false },
+      { ...base, port: 25, secure: false, requireTLS: false },
     ];
   }
 
   return [
-    { ...base, secure: false, requireTLS: true },
-    { ...base, secure: true, requireTLS: false },
+    { ...base, port: config.port, secure: false, requireTLS: true },
+    { ...base, port: 587, secure: false, requireTLS: true },
+    { ...base, port: 465, secure: true, requireTLS: false },
   ];
 }
 
