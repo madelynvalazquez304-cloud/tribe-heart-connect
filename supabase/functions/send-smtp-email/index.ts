@@ -98,15 +98,6 @@ function buildTransportCandidates(config: SmtpConfig) {
   ];
 }
 
-function pickValue(rows: any[], key: string, fallback: any = ""): any {
-  const row = rows.find((r) => r.key === key);
-  if (!row) return fallback;
-  const v = row.value;
-  if (typeof v === "string") return v;
-  if (v === null || v === undefined) return fallback;
-  return v;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
