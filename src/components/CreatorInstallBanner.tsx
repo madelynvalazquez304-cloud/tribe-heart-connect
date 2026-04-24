@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, UNSAFE_LocationContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { X, Download, Smartphone, Share, PlusSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,7 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 const CreatorInstallBanner = () => {
   const { isCreator } = useAuth();
   const { isInstallable, isInstalled, isIOS, isIOSSafari, promptInstall, dismiss, dismissed } = useInstallPrompt();
-  const location = useLocation();
+  // Defensive: only call useLocation when inside a Router context to avoid
+  // crashing the entire app if this component is ever rendered outside one.
+  const hasRouter = React.useContext(UNSAFE_LocationContext as any) != null;
+  const location = hasRouter ? useLocation() : ({ pathname: typeof window !== 'undefined' ? window.location.pathname : '/' } as any);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 
   // Only show for creators who haven't installed.
