@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Heart, Mail, Lock, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,12 +13,14 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // 2FA challenge state
+  const [twoFa, setTwoFa] = useState<{ required: boolean; userId: string; email: string; sending: boolean; verifying: boolean; code: string } | null>(null);
   const { signIn, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
+  // Redirect if already logged in (and 2FA not pending)
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && !twoFa?.required) {
       if (isAdmin) {
         navigate('/admin');
       } else if (isCreator) {
@@ -27,7 +29,7 @@ const Login = () => {
         navigate('/account');
       }
     }
-  }, [user, isAdmin, isCreator, authLoading, navigate]);
+  }, [user, isAdmin, isCreator, authLoading, navigate, twoFa]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +43,64 @@ const Login = () => {
       return;
     }
 
+    // Check whether this account has email 2FA enabled — if so, sign back out
+    // and require a one-time code before proceeding.
+    try {
+      const { data: { user: signedIn } } = await supabase.auth.getUser();
+      if (signedIn) {
+        const { data: tfa } = await supabase
+          .from('user_2fa_settings')
+          .select('is_enabled, method, email')
+          .eq('user_id', signedIn.id)
+          .maybeSingle();
+        if (tfa?.is_enabled && tfa?.method === 'email') {
+          const target = tfa.email || signedIn.email!;
+          setTwoFa({ required: true, userId: signedIn.id, email: target, sending: true, verifying: false, code: '' });
+          // Sign out so the session isn't usable until code is verified
+          await supabase.auth.signOut();
+          await supabase.functions.invoke('send-2fa-code', {
+            body: { user_id: signedIn.id, email: target },
+          });
+          setTwoFa((s) => s ? { ...s, sending: false } : s);
+          toast.success(`Verification code sent to ${target}`);
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('2FA pre-check failed', e);
+    }
+
     toast.success('Welcome back!');
     // Navigation will happen via useEffect when auth state updates
+  };
+
+  const verify2fa = async () => {
+    if (!twoFa) return;
+    setTwoFa({ ...twoFa, verifying: true });
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-2fa-code', {
+        body: { user_id: twoFa.userId, code: twoFa.code },
+      });
+      if (error) throw error;
+      if (!(data as any)?.ok) throw new Error((data as any)?.error || 'Invalid code');
+      // Re-authenticate now that the code is verified
+      const { error: signErr } = await signIn(email, password);
+      if (signErr) throw signErr;
+      toast.success('Verified! Welcome back.');
+      setTwoFa(null);
+    } catch (e: any) {
+      toast.error(e.message || 'Verification failed');
+      setTwoFa((s) => s ? { ...s, verifying: false } : s);
+    }
+  };
+
+  const resend2fa = async () => {
+    if (!twoFa) return;
+    setTwoFa({ ...twoFa, sending: true });
+    await supabase.functions.invoke('send-2fa-code', { body: { user_id: twoFa.userId, email: twoFa.email } });
+    setTwoFa((s) => s ? { ...s, sending: false } : s);
+    toast.success('New code sent');
   };
 
   return (
