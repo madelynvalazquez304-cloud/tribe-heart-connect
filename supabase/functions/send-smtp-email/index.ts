@@ -2,7 +2,7 @@
 // in platform_settings. Supports STARTTLS (587), implicit SSL (465) and plain.
 // Tolerant of shared-hosting peers via Deno's TLS implementation.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import nodemailer from "npm:nodemailer@6.9.14";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,32 +73,33 @@ Deno.serve(async (req) => {
 
     // Build connection: implicit TLS for SSL (465), STARTTLS for tls (587), plain otherwise.
     const useImplicitTls = encryption === "ssl" || port === 465;
-    const client = new SMTPClient({
-      connection: {
-        hostname: host,
-        port,
-        tls: useImplicitTls,
-        auth: { username, password },
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: useImplicitTls, // true for 465 (implicit SSL), false for 587 (STARTTLS)
+      auth: { user: username, pass: password },
+      requireTLS: !useImplicitTls && encryption !== "none",
+      // Tolerant of shared-hosting certs (cPanel/Namecheap/Hostinger/etc.)
+      tls: {
+        rejectUnauthorized: false,
+        minVersion: "TLSv1",
       },
-      // Be tolerant of shared-hosting certs (cPanel/Namecheap/Hostinger/etc.)
-      // by allowing handshake to proceed even with mismatched SAN, while still using TLS.
-      pool: false,
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
     });
 
     const recipients = Array.isArray(body.to) ? body.to : [body.to];
 
-    try {
-      await client.send({
-        from: `${fromName} <${fromEmail}>`,
-        to: recipients,
-        subject: body.subject,
-        content: body.text || body.subject,
-        html: body.html,
-        replyTo: replyTo || undefined,
-      });
-    } finally {
-      try { await client.close(); } catch (_) { /* ignore */ }
-    }
+    await transporter.sendMail({
+      from: `${fromName} <${fromEmail}>`,
+      to: recipients,
+      subject: body.subject,
+      text: body.text || body.subject,
+      html: body.html,
+      replyTo: replyTo || undefined,
+    });
+    try { transporter.close(); } catch (_) { /* ignore */ }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
