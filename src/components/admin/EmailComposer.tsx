@@ -70,7 +70,8 @@ const wrapTemplate = (innerHtml: string, data: Record<string, string>) => {
 export const EmailComposer: React.FC<EmailComposerProps> = ({
   open, onOpenChange, recipient, allowRecipientEdit, defaultSubject, defaultBody,
 }) => {
-  const site = useSiteSettings();
+  const siteQuery = useSiteSettings();
+  const site = siteQuery.data;
   const [to, setTo] = useState(recipient?.email || '');
   const [subject, setSubject] = useState(defaultSubject || 'A note from {{site_name}}');
   const [body, setBody] = useState(defaultBody || 'We wanted to reach out personally about your account.');
