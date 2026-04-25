@@ -59,6 +59,25 @@ const Signup = () => {
     setIsLoading(true);
     const { error } = await signUp(email, password, fullName);
     if (error) { toast.error(error.message); setIsLoading(false); return; }
+    // Optional welcome email — gated by admin platform setting.
+    try {
+      const { data: row } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'signup_welcome_email_enabled')
+        .maybeSingle();
+      const enabled = row?.value === true || row?.value === 'true';
+      if (enabled) {
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            event_type: 'welcome_signup',
+            channel: 'email',
+            recipient: email,
+            data: { recipient_name: fullName || email.split('@')[0], action_url: `${window.location.origin}/login` },
+          },
+        });
+      }
+    } catch (e) { console.warn('welcome email skipped', e); }
     toast.success('Account created! Check your email to verify, then sign in.');
     setIsLoading(false);
   };
