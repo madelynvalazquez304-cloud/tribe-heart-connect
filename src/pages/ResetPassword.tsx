@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Heart, Lock, Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,22 +15,18 @@ const ResetPassword = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
 
   useEffect(() => {
-    // Check for recovery token in URL hash
+    if (token) { setIsRecovery(true); return; }
     const hash = window.location.hash;
-    if (hash.includes('type=recovery')) {
-      setIsRecovery(true);
-    }
-
+    if (hash.includes('type=recovery')) setIsRecovery(true);
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsRecovery(true);
-      }
+      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true);
     });
-
     return () => subscription.unsubscribe();
-  }, []);
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,12 +42,21 @@ const ResetPassword = () => {
     }
 
     setIsLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
-
-    if (error) {
-      toast.error(error.message);
-      setIsLoading(false);
-      return;
+    if (token) {
+      const { data, error } = await supabase.functions.invoke('reset-password-confirm', {
+        body: { token, password },
+      });
+      const errCode = (data as any)?.error;
+      if (error || errCode) {
+        const msg = errCode === 'token_expired' ? 'This link has expired. Please request a new one.'
+          : errCode === 'token_used' ? 'This link has already been used.'
+          : errCode === 'invalid_token' ? 'This link is invalid.'
+          : (error as any)?.message || 'Could not reset password';
+        toast.error(msg); setIsLoading(false); return;
+      }
+    } else {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) { toast.error(error.message); setIsLoading(false); return; }
     }
 
     setIsSuccess(true);
