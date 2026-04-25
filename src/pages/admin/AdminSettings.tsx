@@ -683,6 +683,13 @@ const AdminSettings = () => {
           </Card>
         </div>
       </div>
+      <EmailComposer
+        open={composerOpen}
+        onOpenChange={setComposerOpen}
+        allowRecipientEdit
+        defaultSubject="A note from {{site_name}}"
+        defaultBody={`Hi {{recipient_name}},\n\nWe wanted to reach out personally.\n\nThanks,\nThe {{site_name}} team`}
+      />
     </DashboardLayout>
   );
 };
