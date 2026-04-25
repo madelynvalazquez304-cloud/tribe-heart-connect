@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("send-2fa-code", e);
-    return new Response(JSON.stringify({ error: String(e?.message || e) }), {
+    return new Response(JSON.stringify({ error: String((e as any)?.message || e) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
