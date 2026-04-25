@@ -204,13 +204,13 @@ const Login = () => {
                     toast.error('Enter your email first');
                     return;
                   }
-                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}/reset-password`
+                  const { data, error } = await supabase.functions.invoke('send-password-reset', {
+                    body: { email, origin: window.location.origin },
                   });
-                  if (error) {
-                    toast.error(error.message);
+                  if (error || (data as any)?.error) {
+                    toast.error((error as any)?.message || (data as any)?.error || 'Could not send reset email');
                   } else {
-                    toast.success('Password reset email sent! Check your inbox.');
+                    toast.success('If an account exists for that email, a reset link is on its way.');
                   }
                 }}
                 className="text-sm text-primary hover:underline"
