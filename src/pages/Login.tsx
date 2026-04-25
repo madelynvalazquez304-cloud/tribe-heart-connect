@@ -15,6 +15,10 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   // 2FA challenge state
   const [twoFa, setTwoFa] = useState<{ required: boolean; userId: string; email: string; sending: boolean; verifying: boolean; code: string } | null>(null);
+  const [resendIn, setResendIn] = useState(0); // seconds until 2FA resend allowed
+  const [forgotIn, setForgotIn] = useState(0); // seconds until next forgot-password send
+  const RESEND_COOLDOWN = 45;
+  const FORGOT_COOLDOWN = 60;
   const { signIn, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -30,6 +34,16 @@ const Login = () => {
       }
     }
   }, [user, isAdmin, isCreator, authLoading, navigate, twoFa]);
+
+  // Cooldown ticker for both resend buttons.
+  useEffect(() => {
+    if (resendIn <= 0 && forgotIn <= 0) return;
+    const t = setInterval(() => {
+      setResendIn((s) => (s > 0 ? s - 1 : 0));
+      setForgotIn((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [resendIn, forgotIn]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +76,8 @@ const Login = () => {
             body: { user_id: signedIn.id, email: target },
           });
           setTwoFa((s) => s ? { ...s, sending: false } : s);
-          toast.success(`Verification code sent to ${target}`);
+          setResendIn(RESEND_COOLDOWN);
+          toast.success(`Code sent to ${target}. Expires in 10 minutes.`);
           setIsLoading(false);
           return;
         }
@@ -96,11 +111,12 @@ const Login = () => {
   };
 
   const resend2fa = async () => {
-    if (!twoFa) return;
+    if (!twoFa || resendIn > 0) return;
     setTwoFa({ ...twoFa, sending: true });
     await supabase.functions.invoke('send-2fa-code', { body: { user_id: twoFa.userId, email: twoFa.email } });
     setTwoFa((s) => s ? { ...s, sending: false } : s);
-    toast.success('New code sent');
+    setResendIn(RESEND_COOLDOWN);
+    toast.success('New code sent. Expires in 10 minutes.');
   };
 
   return (
