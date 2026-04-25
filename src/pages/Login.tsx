@@ -15,6 +15,10 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   // 2FA challenge state
   const [twoFa, setTwoFa] = useState<{ required: boolean; userId: string; email: string; sending: boolean; verifying: boolean; code: string } | null>(null);
+  const [resendIn, setResendIn] = useState(0); // seconds until 2FA resend allowed
+  const [forgotIn, setForgotIn] = useState(0); // seconds until next forgot-password send
+  const RESEND_COOLDOWN = 45;
+  const FORGOT_COOLDOWN = 60;
   const { signIn, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -30,6 +34,16 @@ const Login = () => {
       }
     }
   }, [user, isAdmin, isCreator, authLoading, navigate, twoFa]);
+
+  // Cooldown ticker for both resend buttons.
+  useEffect(() => {
+    if (resendIn <= 0 && forgotIn <= 0) return;
+    const t = setInterval(() => {
+      setResendIn((s) => (s > 0 ? s - 1 : 0));
+      setForgotIn((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [resendIn, forgotIn]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +76,8 @@ const Login = () => {
             body: { user_id: signedIn.id, email: target },
           });
           setTwoFa((s) => s ? { ...s, sending: false } : s);
-          toast.success(`Verification code sent to ${target}`);
+          setResendIn(RESEND_COOLDOWN);
+          toast.success(`Code sent to ${target}. Expires in 10 minutes.`);
           setIsLoading(false);
           return;
         }
@@ -96,11 +111,12 @@ const Login = () => {
   };
 
   const resend2fa = async () => {
-    if (!twoFa) return;
+    if (!twoFa || resendIn > 0) return;
     setTwoFa({ ...twoFa, sending: true });
     await supabase.functions.invoke('send-2fa-code', { body: { user_id: twoFa.userId, email: twoFa.email } });
     setTwoFa((s) => s ? { ...s, sending: false } : s);
-    toast.success('New code sent');
+    setResendIn(RESEND_COOLDOWN);
+    toast.success('New code sent. Expires in 10 minutes.');
   };
 
   return (
@@ -147,13 +163,21 @@ const Login = () => {
                 {twoFa.verifying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : 'Verify & sign in'}
               </Button>
               <div className="flex items-center justify-between text-sm">
-                <button type="button" onClick={resend2fa} disabled={twoFa.sending} className="text-primary hover:underline">
-                  {twoFa.sending ? 'Sending…' : 'Resend code'}
+                <button
+                  type="button"
+                  onClick={resend2fa}
+                  disabled={twoFa.sending || resendIn > 0}
+                  className="text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+                >
+                  {twoFa.sending ? 'Sending…' : resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
                 </button>
                 <button type="button" onClick={() => setTwoFa(null)} className="text-muted-foreground hover:text-foreground">
                   Use another account
                 </button>
               </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Code expires in 10 minutes. Check your spam folder if it doesn't arrive.
+              </p>
             </div>
           ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -204,18 +228,24 @@ const Login = () => {
                     toast.error('Enter your email first');
                     return;
                   }
+                  if (forgotIn > 0) {
+                    toast.message(`Please wait ${forgotIn}s before requesting another link.`);
+                    return;
+                  }
                   const { data, error } = await supabase.functions.invoke('send-password-reset', {
                     body: { email, origin: window.location.origin },
                   });
                   if (error || (data as any)?.error) {
                     toast.error((error as any)?.message || (data as any)?.error || 'Could not send reset email');
                   } else {
-                    toast.success('If an account exists for that email, a reset link is on its way.');
+                    setForgotIn(FORGOT_COOLDOWN);
+                    toast.success('If an account exists, a reset link is on its way. The link expires in 30 minutes.');
                   }
                 }}
-                className="text-sm text-primary hover:underline"
+                disabled={forgotIn > 0}
+                className="text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline"
               >
-                Forgot password?
+                {forgotIn > 0 ? `Resend in ${forgotIn}s` : 'Forgot password?'}
               </button>
             </div>
 

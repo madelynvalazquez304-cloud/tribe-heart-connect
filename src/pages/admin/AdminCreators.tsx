@@ -15,9 +15,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Check, X, Eye, Ban, RefreshCw, Loader2, ExternalLink, Star, ShoppingBag } from 'lucide-react';
+import { Search, Check, X, Eye, Ban, RefreshCw, Loader2, ExternalLink, Star, ShoppingBag, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import EmailComposer, { EmailComposerRecipient } from '@/components/admin/EmailComposer';
 
 type CreatorStatus = 'pending' | 'approved' | 'suspended' | 'rejected';
 
@@ -27,13 +28,14 @@ const AdminCreators = () => {
   const [selectedCreator, setSelectedCreator] = useState<any>(null);
   const [actionDialog, setActionDialog] = useState<{ type: 'approve' | 'reject' | 'suspend' | 'unsuspend' | null; creator: any }>({ type: null, creator: null });
   const [reason, setReason] = useState('');
+  const [emailTarget, setEmailTarget] = useState<EmailComposerRecipient | null>(null);
 
   const { data: creators, isLoading } = useQuery({
     queryKey: ['admin-creators'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('creators')
-        .select(`*, category:creator_categories(name)`)
+        .select(`*, category:creator_categories(name), profiles:user_id(email)`)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -276,6 +278,22 @@ const AdminCreators = () => {
                                     <RefreshCw className="w-4 h-4" />
                                   </Button>
                                 )}
+                                {(creator as any)?.profiles?.email && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-primary hover:text-primary hover:bg-primary/10"
+                                    title="Send custom email"
+                                    onClick={() => setEmailTarget({
+                                      email: (creator as any).profiles.email,
+                                      name: creator.display_name,
+                                      username: creator.username,
+                                      creator_link: `${window.location.origin}/@${creator.username}`,
+                                    })}
+                                  >
+                                    <Mail className="w-4 h-4" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -408,6 +426,13 @@ const AdminCreators = () => {
           </DialogContent>
         </Dialog>
       </div>
+      <EmailComposer
+        open={!!emailTarget}
+        onOpenChange={(o) => { if (!o) setEmailTarget(null); }}
+        recipient={emailTarget}
+        defaultSubject="A note from {{site_name}}"
+        defaultBody={`Hi {{recipient_name}},\n\nWe wanted to reach out about your creator account on {{site_name}}.\n\nYour public profile: {{creator_link}}\n\nLet us know if you have any questions.`}
+      />
     </DashboardLayout>
   );
 };
