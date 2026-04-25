@@ -15,9 +15,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Check, X, Eye, Ban, RefreshCw, Loader2, ExternalLink, Star, ShoppingBag } from 'lucide-react';
+import { Search, Check, X, Eye, Ban, RefreshCw, Loader2, ExternalLink, Star, ShoppingBag, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import EmailComposer, { EmailComposerRecipient } from '@/components/admin/EmailComposer';
 
 type CreatorStatus = 'pending' | 'approved' | 'suspended' | 'rejected';
 
@@ -27,13 +28,14 @@ const AdminCreators = () => {
   const [selectedCreator, setSelectedCreator] = useState<any>(null);
   const [actionDialog, setActionDialog] = useState<{ type: 'approve' | 'reject' | 'suspend' | 'unsuspend' | null; creator: any }>({ type: null, creator: null });
   const [reason, setReason] = useState('');
+  const [emailTarget, setEmailTarget] = useState<EmailComposerRecipient | null>(null);
 
   const { data: creators, isLoading } = useQuery({
     queryKey: ['admin-creators'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('creators')
-        .select(`*, category:creator_categories(name)`)
+        .select(`*, category:creator_categories(name), profiles:user_id(email)`)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
