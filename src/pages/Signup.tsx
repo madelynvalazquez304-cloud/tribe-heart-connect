@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const REFERRAL_STORAGE_KEY = 'tribeyangu_referral_code';
 const REFERRAL_EXPIRY_KEY = 'tribeyangu_referral_expiry';
