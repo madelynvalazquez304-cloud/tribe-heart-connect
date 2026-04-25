@@ -163,13 +163,21 @@ const Login = () => {
                 {twoFa.verifying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : 'Verify & sign in'}
               </Button>
               <div className="flex items-center justify-between text-sm">
-                <button type="button" onClick={resend2fa} disabled={twoFa.sending} className="text-primary hover:underline">
-                  {twoFa.sending ? 'Sending…' : 'Resend code'}
+                <button
+                  type="button"
+                  onClick={resend2fa}
+                  disabled={twoFa.sending || resendIn > 0}
+                  className="text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+                >
+                  {twoFa.sending ? 'Sending…' : resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
                 </button>
                 <button type="button" onClick={() => setTwoFa(null)} className="text-muted-foreground hover:text-foreground">
                   Use another account
                 </button>
               </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Code expires in 10 minutes. Check your spam folder if it doesn't arrive.
+              </p>
             </div>
           ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -220,18 +228,24 @@ const Login = () => {
                     toast.error('Enter your email first');
                     return;
                   }
+                  if (forgotIn > 0) {
+                    toast.message(`Please wait ${forgotIn}s before requesting another link.`);
+                    return;
+                  }
                   const { data, error } = await supabase.functions.invoke('send-password-reset', {
                     body: { email, origin: window.location.origin },
                   });
                   if (error || (data as any)?.error) {
                     toast.error((error as any)?.message || (data as any)?.error || 'Could not send reset email');
                   } else {
-                    toast.success('If an account exists for that email, a reset link is on its way.');
+                    setForgotIn(FORGOT_COOLDOWN);
+                    toast.success('If an account exists, a reset link is on its way. The link expires in 30 minutes.');
                   }
                 }}
-                className="text-sm text-primary hover:underline"
+                disabled={forgotIn > 0}
+                className="text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline"
               >
-                Forgot password?
+                {forgotIn > 0 ? `Resend in ${forgotIn}s` : 'Forgot password?'}
               </button>
             </div>
 
