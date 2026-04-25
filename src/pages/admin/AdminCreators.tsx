@@ -278,6 +278,22 @@ const AdminCreators = () => {
                                     <RefreshCw className="w-4 h-4" />
                                   </Button>
                                 )}
+                                {(creator as any)?.profiles?.email && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-primary hover:text-primary hover:bg-primary/10"
+                                    title="Send custom email"
+                                    onClick={() => setEmailTarget({
+                                      email: (creator as any).profiles.email,
+                                      name: creator.display_name,
+                                      username: creator.username,
+                                      creator_link: `${window.location.origin}/@${creator.username}`,
+                                    })}
+                                  >
+                                    <Mail className="w-4 h-4" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
