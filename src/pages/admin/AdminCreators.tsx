@@ -426,6 +426,13 @@ const AdminCreators = () => {
           </DialogContent>
         </Dialog>
       </div>
+      <EmailComposer
+        open={!!emailTarget}
+        onOpenChange={(o) => { if (!o) setEmailTarget(null); }}
+        recipient={emailTarget}
+        defaultSubject="A note from {{site_name}}"
+        defaultBody={`Hi {{recipient_name}},\n\nWe wanted to reach out about your creator account on {{site_name}}.\n\nYour public profile: {{creator_link}}\n\nLet us know if you have any questions.`}
+      />
     </DashboardLayout>
   );
 };
