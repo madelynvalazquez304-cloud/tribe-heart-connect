@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Save, Percent, DollarSign, Wallet, Truck, AlertCircle, Globe, Image, Upload, Trash2, Mail, Shield, Key, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
+import EmailComposer from '@/components/admin/EmailComposer';
 
 interface Setting {
   id: string;
@@ -203,6 +204,7 @@ const AdminSettings = () => {
 
   const [testEmail, setTestEmail] = useState('');
   const [testing, setTesting] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const handleTestSmtp = async () => {
     if (!testEmail) { toast.error('Enter a recipient email'); return; }
     setTesting(true);
