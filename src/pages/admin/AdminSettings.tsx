@@ -586,6 +586,15 @@ const AdminSettings = () => {
                 <p className="text-xs text-muted-foreground mt-2">
                   SMTP is saved as its own config first, then tested with the matching handshake and corrected default port.
                 </p>
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-dashed border-border p-3">
+                  <div>
+                    <p className="text-sm font-medium">Send a custom email</p>
+                    <p className="text-xs text-muted-foreground">Compose with placeholders and preview the mobile-responsive template.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setComposerOpen(true)} className="gap-2">
+                    <Mail className="w-4 h-4" /> Open composer
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
