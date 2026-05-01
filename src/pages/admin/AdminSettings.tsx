@@ -247,6 +247,25 @@ const AdminSettings = () => {
     }
   };
 
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `branding/favicon-${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('creator-assets').upload(fileName, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('creator-assets').getPublicUrl(fileName);
+      handleChange('site_favicon_url', publicUrl);
+      toast.success('Favicon uploaded! Refresh tabs to see the change.');
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout type="admin">
@@ -327,6 +346,34 @@ const AdminSettings = () => {
                       </div>
                       <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
                     </label>
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Favicon (browser tab icon)</Label>
+                  <div className="flex items-center gap-4">
+                    {settings.site_favicon_url ? (
+                      <div className="relative">
+                        <img src={settings.site_favicon_url} alt="Favicon" className="w-12 h-12 object-contain rounded-lg border bg-white p-1" />
+                        <button
+                          onClick={() => handleChange('site_favicon_url', '')}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center">
+                        <Image className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <label className="cursor-pointer">
+                      <div className="flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-secondary/50 transition-colors">
+                        {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        <span className="text-sm">{uploading ? 'Uploading...' : 'Upload Favicon'}</span>
+                      </div>
+                      <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/x-icon,image/vnd.microsoft.icon" className="hidden" onChange={handleFaviconUpload} disabled={uploading} />
+                    </label>
+                    <p className="text-xs text-muted-foreground">Square PNG or SVG (32×32 or larger). Replaces the default in browser tabs and search results.</p>
                   </div>
                 </div>
               </div>

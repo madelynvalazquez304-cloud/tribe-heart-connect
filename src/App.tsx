@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CreatorInstallBanner from "@/components/CreatorInstallBanner";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import { useFaviconSync } from "@/hooks/useFaviconSync";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -61,12 +62,18 @@ import CreatorOrders from "./pages/creator/CreatorOrders";
 
 const queryClient = new QueryClient();
 
+const SiteHeadSync = () => {
+  useFaviconSync();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <SiteHeadSync />
         <BrowserRouter>
           <CreatorInstallBanner />
           <Routes>

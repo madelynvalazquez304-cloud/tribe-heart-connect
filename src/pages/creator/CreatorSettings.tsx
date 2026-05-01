@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Save, Phone, Mail, Shield } from 'lucide-react';
+import { Loader2, Save, Phone, Mail, Shield, ShieldCheck, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CreatorSettings = () => {
@@ -53,6 +53,20 @@ const CreatorSettings = () => {
     phone: '',
     email: ''
   });
+
+  // Inline OTP verification state for enabling email 2FA.
+  const [otpStep, setOtpStep] = useState<'idle' | 'verify'>('idle');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpResendIn, setOtpResendIn] = useState(0);
+  const RESEND_COOLDOWN = 45;
+
+  React.useEffect(() => {
+    if (otpResendIn <= 0) return;
+    const t = setInterval(() => setOtpResendIn((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [otpResendIn]);
 
   React.useEffect(() => {
     if (creator) {
@@ -99,9 +113,69 @@ const CreatorSettings = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['2fa-settings'] });
       toast.success('2FA settings updated!');
+      setOtpStep('idle');
+      setOtpCode('');
     },
     onError: (error: Error) => toast.error(error.message)
   });
+
+  const sendEmailOtp = async () => {
+    if (!user) return;
+    const target = (twoFa.email || user.email || '').trim();
+    if (!target) { toast.error('Enter an email address first'); return; }
+    if (otpResendIn > 0) return;
+    setOtpSending(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-2fa-code', {
+        body: { user_id: user.id, email: target, purpose: 'enable_2fa' },
+      });
+      if (error) throw error;
+      setOtpStep('verify');
+      setOtpResendIn(RESEND_COOLDOWN);
+      toast.success(`Code sent to ${target}. Expires in 10 minutes.`);
+    } catch (e: any) {
+      toast.error(e.message || 'Could not send verification code');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const verifyAndEnable = async () => {
+    if (!user || otpCode.length !== 6) return;
+    setOtpVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-2fa-code', {
+        body: { user_id: user.id, code: otpCode, purpose: 'enable_2fa' },
+      });
+      if (error) throw error;
+      if (!(data as any)?.ok) throw new Error((data as any)?.error || 'Invalid code');
+      // Persist now that the email is verified.
+      update2fa.mutate({ ...twoFa, is_enabled: true });
+    } catch (e: any) {
+      toast.error(e.message || 'Verification failed. Try again or resend the code.');
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  const handle2faSave = () => {
+    if (!twoFa.is_enabled) {
+      // Disabling — just persist.
+      update2fa.mutate(twoFa);
+      return;
+    }
+    if (twoFa.method === 'email') {
+      // Require OTP confirmation of the email address before enabling.
+      if (otpStep !== 'verify') {
+        sendEmailOtp();
+      } else {
+        verifyAndEnable();
+      }
+      return;
+    }
+    // SMS path keeps existing behavior.
+    update2fa.mutate(twoFa);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,9 +269,52 @@ const CreatorSettings = () => {
                 </>
               )}
 
-              <Button onClick={() => update2fa.mutate(twoFa)} disabled={update2fa.isPending} className="gap-2">
-                {update2fa.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save 2FA Settings
+              {twoFa.is_enabled && twoFa.method === 'email' && otpStep === 'verify' && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                    Enter the 6-digit code we just emailed to <span className="font-semibold">{twoFa.email || user?.email}</span>
+                  </div>
+                  <Input
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    className="text-center tracking-[10px] text-2xl font-bold"
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <button
+                      type="button"
+                      onClick={sendEmailOtp}
+                      disabled={otpSending || otpResendIn > 0}
+                      className="text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+                    >
+                      {otpSending ? 'Sending…' : otpResendIn > 0 ? `Resend in ${otpResendIn}s` : 'Resend code'}
+                    </button>
+                    <span>Code expires in 10 minutes</span>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                onClick={handle2faSave}
+                disabled={update2fa.isPending || otpSending || otpVerifying || (otpStep === 'verify' && otpCode.length !== 6)}
+                className="gap-2"
+              >
+                {update2fa.isPending || otpVerifying || otpSending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : twoFa.is_enabled && twoFa.method === 'email' ? (
+                  <KeyRound className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {!twoFa.is_enabled
+                  ? 'Save 2FA Settings'
+                  : twoFa.method === 'email'
+                    ? otpStep === 'verify' ? 'Verify & Enable' : 'Send code to verify email'
+                    : 'Save 2FA Settings'}
               </Button>
             </CardContent>
           </Card>

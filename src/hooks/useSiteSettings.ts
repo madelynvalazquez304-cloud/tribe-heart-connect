@@ -5,6 +5,7 @@ export interface SiteSettings {
   site_name: string;
   site_tagline: string;
   site_logo_url: string;
+  site_favicon_url: string;
   contact_email: string;
   contact_phone: string;
   contact_address: string;
@@ -19,6 +20,7 @@ const defaults: SiteSettings = {
   site_name: 'TribeYangu',
   site_tagline: 'Turning fans into family',
   site_logo_url: '',
+  site_favicon_url: '',
   contact_email: 'hello@tribeyangu.com',
   contact_phone: '',
   contact_address: '',
