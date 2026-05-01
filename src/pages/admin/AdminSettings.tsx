@@ -247,6 +247,25 @@ const AdminSettings = () => {
     }
   };
 
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `branding/favicon-${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('creator-assets').upload(fileName, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('creator-assets').getPublicUrl(fileName);
+      handleChange('site_favicon_url', publicUrl);
+      toast.success('Favicon uploaded! Refresh tabs to see the change.');
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout type="admin">
