@@ -37,17 +37,17 @@ Deno.serve(async (req) => {
     if (error) throw error;
 
     if (!row) {
-      return new Response(JSON.stringify({ ok: false, error: "Invalid code" }), {
+      return new Response(JSON.stringify({ ok: false, code: "invalid", error: "Invalid code. Double-check the digits and try again." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (row.consumed_at) {
-      return new Response(JSON.stringify({ ok: false, error: "Code already used" }), {
+      return new Response(JSON.stringify({ ok: false, code: "used", error: "This code has already been used. Request a new one." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (new Date(row.expires_at).getTime() < Date.now()) {
-      return new Response(JSON.stringify({ ok: false, error: "Code expired" }), {
+      return new Response(JSON.stringify({ ok: false, code: "expired", error: "This code has expired. Tap resend to get a fresh one." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
