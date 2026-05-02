@@ -5,7 +5,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-export const useInstallPrompt = () => {
+export const useInstallPrompt = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -34,6 +34,7 @@ export const useInstallPrompt = () => {
     }
 
     const handler = (e: Event) => {
+      if (!enabled || dismissed) return;
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
@@ -52,7 +53,7 @@ export const useInstallPrompt = () => {
       window.removeEventListener('beforeinstallprompt', handler);
       window.removeEventListener('appinstalled', installedHandler);
     };
-  }, []);
+  }, [enabled, dismissed]);
 
   const promptInstall = useCallback(async () => {
     if (!deferredPrompt) return false;
