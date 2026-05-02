@@ -8,17 +8,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 const CreatorInstallBanner = () => {
   const { isCreator } = useAuth();
-  const { isInstallable, isInstalled, isIOS, isIOSSafari, promptInstall, dismiss, dismissed } = useInstallPrompt();
   // Defensive: only call useLocation when inside a Router context to avoid
   // crashing the entire app if this component is ever rendered outside one.
   const hasRouter = React.useContext(UNSAFE_LocationContext as any) != null;
   const location = hasRouter ? useLocation() : ({ pathname: typeof window !== 'undefined' ? window.location.pathname : '/' } as any);
+  const isCreatorArea = location.pathname.startsWith('/dashboard');
+  const { isInstallable, isInstalled, isIOS, isIOSSafari, promptInstall, dismiss, dismissed } = useInstallPrompt({ enabled: isCreator && isCreatorArea });
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 
   // Only show for creators who haven't installed.
   // We show on every creator page but it is most prominent on the dashboard.
   if (!isCreator || isInstalled || dismissed || !isInstallable) return null;
-  const onDashboard = location.pathname.startsWith('/dashboard');
+  const onDashboard = isCreatorArea;
 
   const handleInstall = async () => {
     if (isIOS) {

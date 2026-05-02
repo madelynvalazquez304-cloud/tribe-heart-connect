@@ -39,7 +39,7 @@ const CreatorPage = () => {
       const { data, error } = await supabase
         .from('creators')
         .select(`*, category:creator_categories(name, icon)`)
-        .eq('username', username)
+        .eq('username', username.toLowerCase())
         .eq('status', 'approved')
         .maybeSingle();
       

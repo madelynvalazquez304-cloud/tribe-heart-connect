@@ -54,6 +54,10 @@ const playSound = (type: 'gift' | 'celebration') => {
 const GiftAnimationOverlay: React.FC<GiftAnimationOverlayProps> = ({ creatorId }) => {
   const [floatingGifts, setFloatingGifts] = useState<FloatingGift[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
+  const realtimeEnabled = typeof window !== 'undefined'
+    && window.location.protocol === 'https:'
+    && !window.location.hostname.includes('lovableproject.com')
+    && !window.location.hostname.includes('id-preview--');
 
   const triggerAnimation = useCallback((icon: string, quantity: number = 1) => {
     // Play sound
@@ -87,6 +91,8 @@ const GiftAnimationOverlay: React.FC<GiftAnimationOverlayProps> = ({ creatorId }
   }, []);
 
   useEffect(() => {
+    if (!creatorId || !realtimeEnabled) return;
+
     // Subscribe to real-time gift events
     const channel = supabase
       .channel(`gifts-${creatorId}`)
@@ -105,7 +111,7 @@ const GiftAnimationOverlay: React.FC<GiftAnimationOverlayProps> = ({ creatorId }
               .from('gift_types')
               .select('icon')
               .eq('id', payload.new.gift_type_id)
-              .single();
+              .maybeSingle();
             
             if (giftType) {
               triggerAnimation(giftType.icon, payload.new.quantity || 1);
@@ -127,7 +133,7 @@ const GiftAnimationOverlay: React.FC<GiftAnimationOverlayProps> = ({ creatorId }
               .from('gift_types')
               .select('icon')
               .eq('id', payload.new.gift_type_id)
-              .single();
+              .maybeSingle();
             
             if (giftType) {
               triggerAnimation(giftType.icon, payload.new.quantity || 1);
@@ -140,7 +146,7 @@ const GiftAnimationOverlay: React.FC<GiftAnimationOverlayProps> = ({ creatorId }
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [creatorId, triggerAnimation]);
+  }, [creatorId, realtimeEnabled, triggerAnimation]);
 
   if (floatingGifts.length === 0 && !showCelebration) return null;
 

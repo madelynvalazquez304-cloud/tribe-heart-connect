@@ -28,14 +28,14 @@ const UserDashboard = () => {
     mpesa_phone: ''
   });
 
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading: isProfileLoading } = useQuery({
     queryKey: ['user-profile', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user!.id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -140,7 +140,9 @@ const UserDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="font-display text-3xl font-bold">My Account</h1>
-                <p className="text-muted-foreground">Welcome back, {profile?.full_name || user?.email}</p>
+                <p className="text-muted-foreground">
+                  Welcome back, {isProfileLoading ? 'loading your account...' : profile?.full_name || user?.email}
+                </p>
               </div>
             </div>
 

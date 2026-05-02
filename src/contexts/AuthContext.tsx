@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -24,6 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isInitialSessionReady = useRef(false);
 
   const fetchRoles = async (userId: string) => {
     try {
@@ -52,15 +53,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let mounted = true;
+
+    const applySession = async (nextSession: Session | null) => {
+      if (!mounted) return;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (nextSession?.user) {
+        const userRoles = await fetchRoles(nextSession.user.id);
+        if (!mounted) return;
+        setRoles(userRoles);
+      } else {
+        setRoles([]);
+      }
+      setIsLoading(false);
+    };
+
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+
+      if (!isInitialSessionReady.current && event === 'INITIAL_SESSION') {
+        return;
+      }
       
       if (session?.user) {
         // Use setTimeout to prevent potential deadlock with Supabase
         setTimeout(async () => {
           const userRoles = await fetchRoles(session.user.id);
+          if (!mounted) return;
           setRoles(userRoles);
           setIsLoading(false);
         }, 0);
@@ -72,20 +95,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchRoles(session.user.id).then(userRoles => {
-          setRoles(userRoles);
-          setIsLoading(false);
-        });
-      } else {
-        setIsLoading(false);
-      }
+      isInitialSessionReady.current = true;
+      applySession(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

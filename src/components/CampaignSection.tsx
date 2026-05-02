@@ -121,11 +121,13 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
 
   if (isLoading || !campaigns || campaigns.length === 0) return null;
 
-  const getRealAmount = (campaign: any) => {
+  const getRealAmount = (campaign: any | null | undefined) => {
+    if (!campaign) return 0;
     return contributionStats?.[campaign.id]?.total ?? Number(campaign.current_amount || 0);
   };
 
-  const getRealSupporters = (campaign: any) => {
+  const getRealSupporters = (campaign: any | null | undefined) => {
+    if (!campaign) return 0;
     return contributionStats?.[campaign.id]?.supporters ?? (campaign.supporter_count || 0);
   };
 
@@ -141,6 +143,9 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
     const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 0;
   };
+
+  const selectedAmountRaised = getRealAmount(selectedCampaign);
+  const selectedGoalAmount = Number(selectedCampaign?.goal_amount || 0);
 
   return (
     <Card className="overflow-hidden">
@@ -235,14 +240,14 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
             <div className="p-4 rounded-lg bg-secondary/50">
               <div className="flex justify-between text-sm mb-2">
                 <span className="font-medium">
-                  KSh {getRealAmount(selectedCampaign).toLocaleString()}
+                  KSh {selectedAmountRaised.toLocaleString()}
                 </span>
                 <span className="text-muted-foreground">
-                  Goal: KSh {Number(selectedCampaign?.goal_amount || 0).toLocaleString()}
+                  Goal: KSh {selectedGoalAmount.toLocaleString()}
                 </span>
               </div>
               <Progress 
-                value={getProgress(getRealAmount(selectedCampaign), selectedCampaign?.goal_amount || 1)} 
+                value={getProgress(selectedAmountRaised, selectedGoalAmount || 1)} 
                 className="h-2"
               />
               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">

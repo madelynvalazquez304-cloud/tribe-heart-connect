@@ -5,11 +5,18 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-export const useInstallPrompt = () => {
+export const useInstallPrompt = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    const dismissedAt = localStorage.getItem('pwa-install-dismissed');
+    if (!dismissedAt) return false;
+    const hours = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60);
+    if (hours < 6) return true;
+    localStorage.removeItem('pwa-install-dismissed');
+    return false;
+  });
 
   useEffect(() => {
     // Check if already installed (standalone mode)
@@ -34,12 +41,15 @@ export const useInstallPrompt = () => {
     }
 
     const handler = (e: Event) => {
+      if (!enabled || dismissed) return;
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    if (enabled && !dismissed) {
+      window.addEventListener('beforeinstallprompt', handler);
+    }
 
     const installedHandler = () => {
       setIsInstalled(true);
@@ -52,7 +62,7 @@ export const useInstallPrompt = () => {
       window.removeEventListener('beforeinstallprompt', handler);
       window.removeEventListener('appinstalled', installedHandler);
     };
-  }, []);
+  }, [enabled, dismissed]);
 
   const promptInstall = useCallback(async () => {
     if (!deferredPrompt) return false;
