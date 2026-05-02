@@ -97,8 +97,20 @@ const Login = () => {
       const { data, error } = await supabase.functions.invoke('verify-2fa-code', {
         body: { user_id: twoFa.userId, code: twoFa.code },
       });
-      if (error) throw error;
-      if (!(data as any)?.ok) throw new Error((data as any)?.error || 'Invalid code');
+      const payload = (data as any) || {};
+      if (error && !payload.code) throw error;
+      if (!payload.ok) {
+        const kind = payload.code as 'expired' | 'invalid' | 'used' | undefined;
+        if (kind === 'expired' || kind === 'used') {
+          toast.error(payload.error || 'Code expired', {
+            action: { label: 'Resend code', onClick: () => resend2fa() },
+          });
+        } else {
+          toast.error(payload.error || 'Invalid code. Check the digits and try again.');
+        }
+        setTwoFa((s) => s ? { ...s, verifying: false, code: '' } : s);
+        return;
+      }
       // Re-authenticate now that the code is verified
       const { error: signErr } = await signIn(email, password);
       if (signErr) throw signErr;
@@ -112,9 +124,19 @@ const Login = () => {
 
   const resend2fa = async () => {
     if (!twoFa || resendIn > 0) return;
+    // Hard guard — ignore duplicate clicks while a request is in flight.
+    if (twoFa.sending) return;
     setTwoFa({ ...twoFa, sending: true });
-    await supabase.functions.invoke('send-2fa-code', { body: { user_id: twoFa.userId, email: twoFa.email } });
+    const { data } = await supabase.functions.invoke('send-2fa-code', {
+      body: { user_id: twoFa.userId, email: twoFa.email },
+    });
+    const payload = (data as any) || {};
     setTwoFa((s) => s ? { ...s, sending: false } : s);
+    if (payload.code === 'cooldown' && payload.retry_after) {
+      setResendIn(payload.retry_after);
+      toast.message(`Please wait ${payload.retry_after}s before requesting another code.`);
+      return;
+    }
     setResendIn(RESEND_COOLDOWN);
     toast.success('New code sent. Expires in 10 minutes.');
   };
