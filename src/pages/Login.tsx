@@ -14,13 +14,48 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   // 2FA challenge state
-  const [twoFa, setTwoFa] = useState<{ required: boolean; userId: string; email: string; sending: boolean; verifying: boolean; code: string } | null>(null);
-  const [resendIn, setResendIn] = useState(0); // seconds until 2FA resend allowed
-  const [forgotIn, setForgotIn] = useState(0); // seconds until next forgot-password send
+  const [twoFa, setTwoFa] = useState<{ required: boolean; userId: string; email: string; sending: boolean; verifying: boolean; code: string } | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('ty_2fa_challenge');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // Re-hydrate without in-flight flags.
+      return { ...parsed, sending: false, verifying: false, code: '' };
+    } catch { return null; }
+  });
+  const [resendIn, setResendIn] = useState<number>(() => {
+    const until = Number(sessionStorage.getItem('ty_2fa_resend_until') || 0);
+    return until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
+  });
+  const [forgotIn, setForgotIn] = useState<number>(() => {
+    const until = Number(sessionStorage.getItem('ty_forgot_until') || 0);
+    return until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
+  });
   const RESEND_COOLDOWN = 45;
   const FORGOT_COOLDOWN = 60;
   const { signIn, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Persist the 2FA challenge so refreshing the page doesn't drop it.
+  useEffect(() => {
+    if (twoFa?.required) {
+      sessionStorage.setItem('ty_2fa_challenge', JSON.stringify({
+        required: true, userId: twoFa.userId, email: twoFa.email,
+      }));
+    } else {
+      sessionStorage.removeItem('ty_2fa_challenge');
+    }
+  }, [twoFa?.required, twoFa?.userId, twoFa?.email]);
+
+  // Persist cooldown deadlines so they survive reloads.
+  useEffect(() => {
+    if (resendIn > 0) sessionStorage.setItem('ty_2fa_resend_until', String(Date.now() + resendIn * 1000));
+    else sessionStorage.removeItem('ty_2fa_resend_until');
+  }, [resendIn]);
+  useEffect(() => {
+    if (forgotIn > 0) sessionStorage.setItem('ty_forgot_until', String(Date.now() + forgotIn * 1000));
+    else sessionStorage.removeItem('ty_forgot_until');
+  }, [forgotIn]);
 
   // Redirect if already logged in (and 2FA not pending)
   useEffect(() => {
@@ -97,8 +132,20 @@ const Login = () => {
       const { data, error } = await supabase.functions.invoke('verify-2fa-code', {
         body: { user_id: twoFa.userId, code: twoFa.code },
       });
-      if (error) throw error;
-      if (!(data as any)?.ok) throw new Error((data as any)?.error || 'Invalid code');
+      const payload = (data as any) || {};
+      if (error && !payload.code) throw error;
+      if (!payload.ok) {
+        const kind = payload.code as 'expired' | 'invalid' | 'used' | undefined;
+        if (kind === 'expired' || kind === 'used') {
+          toast.error(payload.error || 'Code expired', {
+            action: { label: 'Resend code', onClick: () => resend2fa() },
+          });
+        } else {
+          toast.error(payload.error || 'Invalid code. Check the digits and try again.');
+        }
+        setTwoFa((s) => s ? { ...s, verifying: false, code: '' } : s);
+        return;
+      }
       // Re-authenticate now that the code is verified
       const { error: signErr } = await signIn(email, password);
       if (signErr) throw signErr;
@@ -112,9 +159,19 @@ const Login = () => {
 
   const resend2fa = async () => {
     if (!twoFa || resendIn > 0) return;
+    // Hard guard — ignore duplicate clicks while a request is in flight.
+    if (twoFa.sending) return;
     setTwoFa({ ...twoFa, sending: true });
-    await supabase.functions.invoke('send-2fa-code', { body: { user_id: twoFa.userId, email: twoFa.email } });
+    const { data } = await supabase.functions.invoke('send-2fa-code', {
+      body: { user_id: twoFa.userId, email: twoFa.email },
+    });
+    const payload = (data as any) || {};
     setTwoFa((s) => s ? { ...s, sending: false } : s);
+    if (payload.code === 'cooldown' && payload.retry_after) {
+      setResendIn(payload.retry_after);
+      toast.message(`Please wait ${payload.retry_after}s before requesting another code.`);
+      return;
+    }
     setResendIn(RESEND_COOLDOWN);
     toast.success('New code sent. Expires in 10 minutes.');
   };

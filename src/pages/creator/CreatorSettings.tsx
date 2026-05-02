@@ -55,12 +55,27 @@ const CreatorSettings = () => {
   });
 
   // Inline OTP verification state for enabling email 2FA.
-  const [otpStep, setOtpStep] = useState<'idle' | 'verify'>('idle');
+  const [otpStep, setOtpStep] = useState<'idle' | 'verify'>(() =>
+    sessionStorage.getItem('ty_creator_2fa_step') === 'verify' ? 'verify' : 'idle'
+  );
   const [otpCode, setOtpCode] = useState('');
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
-  const [otpResendIn, setOtpResendIn] = useState(0);
+  const [otpResendIn, setOtpResendIn] = useState<number>(() => {
+    const until = Number(sessionStorage.getItem('ty_creator_2fa_resend_until') || 0);
+    return until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
+  });
   const RESEND_COOLDOWN = 45;
+
+  React.useEffect(() => {
+    if (otpStep === 'verify') sessionStorage.setItem('ty_creator_2fa_step', 'verify');
+    else sessionStorage.removeItem('ty_creator_2fa_step');
+  }, [otpStep]);
+
+  React.useEffect(() => {
+    if (otpResendIn > 0) sessionStorage.setItem('ty_creator_2fa_resend_until', String(Date.now() + otpResendIn * 1000));
+    else sessionStorage.removeItem('ty_creator_2fa_resend_until');
+  }, [otpResendIn]);
 
   React.useEffect(() => {
     if (otpResendIn <= 0) return;
@@ -123,12 +138,19 @@ const CreatorSettings = () => {
     if (!user) return;
     const target = (twoFa.email || user.email || '').trim();
     if (!target) { toast.error('Enter an email address first'); return; }
-    if (otpResendIn > 0) return;
+    if (otpResendIn > 0 || otpSending) return;
     setOtpSending(true);
     try {
-      const { error } = await supabase.functions.invoke('send-2fa-code', {
+      const { data, error } = await supabase.functions.invoke('send-2fa-code', {
         body: { user_id: user.id, email: target, purpose: 'enable_2fa' },
       });
+      const payload = (data as any) || {};
+      if (payload.code === 'cooldown' && payload.retry_after) {
+        setOtpResendIn(payload.retry_after);
+        setOtpStep('verify');
+        toast.message(`Please wait ${payload.retry_after}s before requesting another code.`);
+        return;
+      }
       if (error) throw error;
       setOtpStep('verify');
       setOtpResendIn(RESEND_COOLDOWN);
@@ -147,8 +169,20 @@ const CreatorSettings = () => {
       const { data, error } = await supabase.functions.invoke('verify-2fa-code', {
         body: { user_id: user.id, code: otpCode, purpose: 'enable_2fa' },
       });
-      if (error) throw error;
-      if (!(data as any)?.ok) throw new Error((data as any)?.error || 'Invalid code');
+      const payload = (data as any) || {};
+      if (error && !payload.code) throw error;
+      if (!payload.ok) {
+        const kind = payload.code as 'expired' | 'invalid' | 'used' | undefined;
+        if (kind === 'expired' || kind === 'used') {
+          toast.error(payload.error || 'Code expired', {
+            action: { label: 'Resend code', onClick: () => sendEmailOtp() },
+          });
+        } else {
+          toast.error(payload.error || 'Invalid code. Try again.');
+        }
+        setOtpCode('');
+        return;
+      }
       // Persist now that the email is verified.
       update2fa.mutate({ ...twoFa, is_enabled: true });
     } catch (e: any) {

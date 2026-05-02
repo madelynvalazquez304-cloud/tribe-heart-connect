@@ -35,6 +35,34 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const ttl = Number((ttlRow as any)?.value ?? 10) || 10;
 
+    // Server-side resend cooldown — protects against duplicate clicks even if
+    // the client timer is bypassed. Defaults to 30 seconds.
+    const { data: cdRow } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "email_2fa_resend_cooldown_seconds")
+      .maybeSingle();
+    const cooldown = Number((cdRow as any)?.value ?? 30) || 30;
+
+    const { data: latest } = await supabase
+      .from("email_2fa_codes")
+      .select("created_at, expires_at, consumed_at")
+      .eq("user_id", user_id)
+      .eq("purpose", purpose)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latest && !latest.consumed_at) {
+      const ageMs = Date.now() - new Date(latest.created_at).getTime();
+      if (ageMs < cooldown * 1000) {
+        const wait = Math.ceil((cooldown * 1000 - ageMs) / 1000);
+        return new Response(JSON.stringify({
+          ok: false, code: "cooldown", retry_after: wait,
+          error: `Please wait ${wait}s before requesting another code.`,
+        }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const code_hash = await sha256(code);
     const expires_at = new Date(Date.now() + ttl * 60_000).toISOString();
