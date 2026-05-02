@@ -40,7 +40,9 @@ export const useInstallPrompt = ({ enabled = true }: { enabled?: boolean } = {})
       setIsInstallable(true);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    if (enabled && !dismissed) {
+      window.addEventListener('beforeinstallprompt', handler);
+    }
 
     const installedHandler = () => {
       setIsInstalled(true);
