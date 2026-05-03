@@ -15,6 +15,7 @@ import CampaignSection from '@/components/CampaignSection';
 import MerchandiseStore from '@/components/MerchandiseStore';
 import EventsSection from '@/components/EventsSection';
 import CreatorAwardsSection from '@/components/CreatorAwardsSection';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import PaymentProcessingModal, { PaymentStatus } from '@/components/PaymentProcessingModal';
 import NotFound from './NotFound';
 import { toast } from 'sonner';
