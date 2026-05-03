@@ -36,7 +36,13 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
         .eq('status', 'active')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data;
+      // Defaulting layer: ensure numeric fields are always safe to render.
+      return (data || []).map((c: any) => ({
+        ...c,
+        current_amount: Number(c?.current_amount ?? 0) || 0,
+        goal_amount: Number(c?.goal_amount ?? 0) || 0,
+        supporter_count: Number(c?.supporter_count ?? 0) || 0,
+      }));
     },
     enabled: !!creatorId
   });

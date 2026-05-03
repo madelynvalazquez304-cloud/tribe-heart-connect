@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2, Save, Percent, DollarSign, Wallet, Truck, AlertCircle, Globe, Image, Upload, Trash2, Mail, Shield, Key, Send } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 import EmailComposer from '@/components/admin/EmailComposer';
@@ -144,7 +145,10 @@ const AdminSettings = () => {
             .eq('key', key);
         }
 
-        const category = key === 'smtp_config' || SMTP_SETTING_KEYS.includes(key as typeof SMTP_SETTING_KEYS[number]) ? 'email' : 'general';
+        let category = 'general';
+        if (key === 'smtp_config' || SMTP_SETTING_KEYS.includes(key as typeof SMTP_SETTING_KEYS[number])) category = 'email';
+        else if (key.startsWith('feature_')) category = 'features';
+        else if (key.startsWith('site_')) category = 'branding';
         return supabase
           .from('platform_settings')
           .insert({ key, value, category, description: null });
@@ -711,6 +715,40 @@ const AdminSettings = () => {
                   <Label>Africa's Talking Username</Label>
                   <Input value={settings.at_username || ''} onChange={(e) => handleChange('at_username', e.target.value)} placeholder="sandbox" />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Feature Toggles */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                Platform Features
+              </CardTitle>
+              <CardDescription>Enable or disable major modules across all creator pages.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {[
+                  { key: 'feature_events_enabled', label: 'Events & Tickets' },
+                  { key: 'feature_campaigns_enabled', label: 'Fundraising Campaigns' },
+                  { key: 'feature_merchandise_enabled', label: 'Merchandise Store' },
+                  { key: 'feature_gifts_enabled', label: 'Virtual Gifts' },
+                  { key: 'feature_awards_enabled', label: 'Awards & Voting' },
+                ].map(({ key, label }) => {
+                  const v = settings[key];
+                  const enabled = v === undefined ? true : v === true || v === 'true';
+                  return (
+                    <div key={key} className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <p className="font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">{enabled ? 'Visible across the platform' : 'Hidden from creator pages'}</p>
+                      </div>
+                      <Switch checked={enabled} onCheckedChange={(c) => handleChange(key, c)} />
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

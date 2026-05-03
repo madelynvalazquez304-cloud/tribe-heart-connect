@@ -15,6 +15,7 @@ import CampaignSection from '@/components/CampaignSection';
 import MerchandiseStore from '@/components/MerchandiseStore';
 import EventsSection from '@/components/EventsSection';
 import CreatorAwardsSection from '@/components/CreatorAwardsSection';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import PaymentProcessingModal, { PaymentStatus } from '@/components/PaymentProcessingModal';
 import NotFound from './NotFound';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ const donationAmounts = [100, 300, 500, 1000];
 
 const CreatorPage = () => {
   const { username } = useParams();
+  const { data: features } = useFeatureFlags();
   const [selectedAmount, setSelectedAmount] = useState<number | null>(300);
   const [customAmount, setCustomAmount] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -279,25 +281,28 @@ const CreatorPage = () => {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Main Column */}
             <div className="lg:col-span-2 space-y-4">
-              {/* Awards */}
-              <CreatorAwardsSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
-              
-              {/* Events */}
-              <EventsSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
-              
-              {/* Campaigns */}
-              <CampaignSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
-              
-              {/* Merchandise */}
-              <MerchandiseStore creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+              {features?.awards !== false && (
+                <CreatorAwardsSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+              )}
+              {features?.events !== false && (
+                <EventsSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+              )}
+              {features?.campaigns !== false && (
+                <CampaignSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+              )}
+              {features?.merchandise !== false && (
+                <MerchandiseStore creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+              )}
             </div>
 
             {/* Support Sidebar */}
             <div className="lg:col-span-1 space-y-4">
               {/* Gifting */}
-              <div id="gift-section">
-                <GiftingPanel creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
-              </div>
+              {features?.gifts !== false && (
+                <div id="gift-section">
+                  <GiftingPanel creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
+                </div>
+              )}
 
               {/* Donation Card */}
               <div id="support-section" className="lg:sticky lg:top-4">

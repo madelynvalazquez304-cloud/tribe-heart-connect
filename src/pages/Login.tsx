@@ -16,19 +16,23 @@ const Login = () => {
   // 2FA challenge state
   const [twoFa, setTwoFa] = useState<{ required: boolean; userId: string; email: string; sending: boolean; verifying: boolean; code: string } | null>(() => {
     try {
-      const raw = sessionStorage.getItem('ty_2fa_challenge');
+      const raw = localStorage.getItem('ty_2fa_challenge');
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      // Re-hydrate without in-flight flags.
+      // Auto-expire stale challenges after 15 min so users aren't trapped.
+      if (parsed.expiresAt && parsed.expiresAt < Date.now()) {
+        localStorage.removeItem('ty_2fa_challenge');
+        return null;
+      }
       return { ...parsed, sending: false, verifying: false, code: '' };
     } catch { return null; }
   });
   const [resendIn, setResendIn] = useState<number>(() => {
-    const until = Number(sessionStorage.getItem('ty_2fa_resend_until') || 0);
+    const until = Number(localStorage.getItem('ty_2fa_resend_until') || 0);
     return until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
   });
   const [forgotIn, setForgotIn] = useState<number>(() => {
-    const until = Number(sessionStorage.getItem('ty_forgot_until') || 0);
+    const until = Number(localStorage.getItem('ty_forgot_until') || 0);
     return until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
   });
   const RESEND_COOLDOWN = 45;
@@ -36,25 +40,26 @@ const Login = () => {
   const { signIn, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Persist the 2FA challenge so refreshing the page doesn't drop it.
+  // Persist the 2FA challenge in localStorage so it survives reloads AND tab
+  // closes. We store an `expiresAt` so stale challenges auto-clear.
   useEffect(() => {
     if (twoFa?.required) {
-      sessionStorage.setItem('ty_2fa_challenge', JSON.stringify({
+      localStorage.setItem('ty_2fa_challenge', JSON.stringify({
         required: true, userId: twoFa.userId, email: twoFa.email,
+        expiresAt: Date.now() + 15 * 60 * 1000,
       }));
     } else {
-      sessionStorage.removeItem('ty_2fa_challenge');
+      localStorage.removeItem('ty_2fa_challenge');
     }
   }, [twoFa?.required, twoFa?.userId, twoFa?.email]);
 
-  // Persist cooldown deadlines so they survive reloads.
   useEffect(() => {
-    if (resendIn > 0) sessionStorage.setItem('ty_2fa_resend_until', String(Date.now() + resendIn * 1000));
-    else sessionStorage.removeItem('ty_2fa_resend_until');
+    if (resendIn > 0) localStorage.setItem('ty_2fa_resend_until', String(Date.now() + resendIn * 1000));
+    else localStorage.removeItem('ty_2fa_resend_until');
   }, [resendIn]);
   useEffect(() => {
-    if (forgotIn > 0) sessionStorage.setItem('ty_forgot_until', String(Date.now() + forgotIn * 1000));
-    else sessionStorage.removeItem('ty_forgot_until');
+    if (forgotIn > 0) localStorage.setItem('ty_forgot_until', String(Date.now() + forgotIn * 1000));
+    else localStorage.removeItem('ty_forgot_until');
   }, [forgotIn]);
 
   // Redirect if already logged in (and 2FA not pending)
