@@ -30,7 +30,10 @@ const EventsSection: React.FC<EventsSectionProps> = ({ creatorId, creatorName, t
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
   const [recordId, setRecordId] = useState('');
 
-  // Fetch own events
+  // Fetch own events. Show approved/live events whose end date is in the
+  // future, OR events without an end date whose start date is within the last
+  // 24h (treat as still ongoing). Filtering happens client-side so events
+  // that just started still appear on the profile.
   const { data: ownEvents, isLoading: loadingOwn } = useQuery({
     queryKey: ['creator-public-events', creatorId],
     queryFn: async () => {
@@ -39,11 +42,17 @@ const EventsSection: React.FC<EventsSectionProps> = ({ creatorId, creatorName, t
         .select(`*, ticket_types(*)`)
         .eq('creator_id', creatorId)
         .in('status', ['approved', 'live'])
-        .gte('event_date', new Date().toISOString())
         .order('event_date', { ascending: true })
-        .limit(5);
+        .limit(20);
       if (error) throw error;
-      return data;
+      const now = Date.now();
+      return (data || []).filter((e: any) => {
+        const end = e.event_end_date ? new Date(e.event_end_date).getTime() : null;
+        const start = e.event_date ? new Date(e.event_date).getTime() : null;
+        if (end) return end > now;
+        if (start) return start > now - 24 * 60 * 60 * 1000;
+        return true;
+      }).slice(0, 10);
     },
     enabled: !!creatorId
   });
@@ -64,9 +73,17 @@ const EventsSection: React.FC<EventsSectionProps> = ({ creatorId, creatorName, t
         .eq('invitee_id', creatorId)
         .eq('status', 'accepted');
       if (error) throw error;
+      const now = Date.now();
       return (collabs || [])
         .map((c: any) => ({ ...c.event, _collab: true, _collabCreator: c.event?.creator }))
-        .filter((e: any) => e && ['approved', 'live'].includes(e.status) && new Date(e.event_date) > new Date());
+        .filter((e: any) => {
+          if (!e || !['approved', 'live'].includes(e.status)) return false;
+          const end = e.event_end_date ? new Date(e.event_end_date).getTime() : null;
+          const start = e.event_date ? new Date(e.event_date).getTime() : null;
+          if (end) return end > now;
+          if (start) return start > now - 24 * 60 * 60 * 1000;
+          return true;
+        });
     },
     enabled: !!creatorId
   });
