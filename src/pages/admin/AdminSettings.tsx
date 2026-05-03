@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2, Save, Percent, DollarSign, Wallet, Truck, AlertCircle, Globe, Image, Upload, Trash2, Mail, Shield, Key, Send } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 import EmailComposer from '@/components/admin/EmailComposer';
@@ -144,7 +145,10 @@ const AdminSettings = () => {
             .eq('key', key);
         }
 
-        const category = key === 'smtp_config' || SMTP_SETTING_KEYS.includes(key as typeof SMTP_SETTING_KEYS[number]) ? 'email' : 'general';
+        let category = 'general';
+        if (key === 'smtp_config' || SMTP_SETTING_KEYS.includes(key as typeof SMTP_SETTING_KEYS[number])) category = 'email';
+        else if (key.startsWith('feature_')) category = 'features';
+        else if (key.startsWith('site_')) category = 'branding';
         return supabase
           .from('platform_settings')
           .insert({ key, value, category, description: null });
