@@ -719,6 +719,40 @@ const AdminSettings = () => {
             </CardContent>
           </Card>
 
+          {/* Feature Toggles */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                Platform Features
+              </CardTitle>
+              <CardDescription>Enable or disable major modules across all creator pages.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {[
+                  { key: 'feature_events_enabled', label: 'Events & Tickets' },
+                  { key: 'feature_campaigns_enabled', label: 'Fundraising Campaigns' },
+                  { key: 'feature_merchandise_enabled', label: 'Merchandise Store' },
+                  { key: 'feature_gifts_enabled', label: 'Virtual Gifts' },
+                  { key: 'feature_awards_enabled', label: 'Awards & Voting' },
+                ].map(({ key, label }) => {
+                  const v = settings[key];
+                  const enabled = v === undefined ? true : v === true || v === 'true';
+                  return (
+                    <div key={key} className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <p className="font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">{enabled ? 'Visible across the platform' : 'Hidden from creator pages'}</p>
+                      </div>
+                      <Switch checked={enabled} onCheckedChange={(c) => handleChange(key, c)} />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-6">
               <div className="flex items-start gap-4">
