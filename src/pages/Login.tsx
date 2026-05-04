@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { lovable } from '@/integrations/lovable';
+import { useSocialAuthEnabled } from '@/hooks/useFeatureFlags';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -39,6 +41,26 @@ const Login = () => {
   const FORGOT_COOLDOWN = 60;
   const { signIn, user, isAdmin, isCreator, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { data: socialFlags } = useSocialAuthEnabled();
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const signInWithGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth('google', {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        toast.error((result.error as any)?.message || 'Google sign-in failed');
+        setGoogleLoading(false);
+        return;
+      }
+      // If redirected, browser navigates away; otherwise tokens already set.
+    } catch (e: any) {
+      toast.error(e?.message || 'Google sign-in failed');
+      setGoogleLoading(false);
+    }
+  };
 
   // Persist the 2FA challenge in localStorage so it survives reloads AND tab
   // closes. We store an `expiresAt` so stale challenges auto-clear.
