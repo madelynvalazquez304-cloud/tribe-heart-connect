@@ -724,9 +724,9 @@ const AdminSettings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="w-5 h-5 text-primary" />
-                Platform Features
+                Platform Toolkit
               </CardTitle>
-              <CardDescription>Enable or disable major modules across all creator pages.</CardDescription>
+              <CardDescription>Toggle which creator superpowers (events, gifts, merch, etc.) appear across the platform.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-2 gap-4">
