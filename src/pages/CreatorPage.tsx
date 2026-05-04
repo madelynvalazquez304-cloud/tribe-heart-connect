@@ -164,7 +164,14 @@ const CreatorPage = () => {
         {/* Banner */}
         <div className="relative h-40 sm:h-48 md:h-64 overflow-hidden">
           {creator.banner_url ? (
-            <img src={creator.banner_url} alt="" className="w-full h-full object-cover" />
+            <img
+              src={creator.banner_url}
+              alt=""
+              className="w-full h-full object-cover"
+              loading="eager"
+              decoding="async"
+              {...({ fetchpriority: 'high' } as any)}
+            />
           ) : (
             <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${themeColor}, ${creator.theme_secondary || '#8B9A6B'})` }} />
           )}
@@ -189,7 +196,14 @@ const CreatorPage = () => {
             <div className="relative flex-shrink-0">
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-card shadow-lg ring-4 ring-background">
                 {creator.avatar_url ? (
-                  <img src={creator.avatar_url} alt={creator.display_name} className="w-full h-full object-cover" />
+                  <img
+                    src={creator.avatar_url}
+                    alt={creator.display_name}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                    {...({ fetchpriority: 'high' } as any)}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-2xl font-bold bg-primary/10" style={{ color: themeColor }}>
                     {creator.display_name.charAt(0)}
