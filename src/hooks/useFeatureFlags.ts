@@ -47,3 +47,22 @@ export const useFeatureFlags = () => {
     placeholderData: defaults,
   });
 };
+
+export const useSocialAuthEnabled = () => {
+  return useQuery({
+    queryKey: ['social-auth-flags'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['social_google_enabled']);
+      const map: Record<string, boolean> = { google: false };
+      (data || []).forEach((row: any) => {
+        if (row.key === 'social_google_enabled') map.google = truthy(row.value);
+      });
+      return map;
+    },
+    staleTime: 60 * 1000,
+    placeholderData: { google: false },
+  });
+};
