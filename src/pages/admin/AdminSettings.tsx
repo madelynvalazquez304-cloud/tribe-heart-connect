@@ -148,6 +148,7 @@ const AdminSettings = () => {
         let category = 'general';
         if (key === 'smtp_config' || SMTP_SETTING_KEYS.includes(key as typeof SMTP_SETTING_KEYS[number])) category = 'email';
         else if (key.startsWith('feature_')) category = 'features';
+        else if (key.startsWith('social_')) category = 'features';
         else if (key.startsWith('site_')) category = 'branding';
         return supabase
           .from('platform_settings')
