@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays } from 'date-fns';
+import CreatorQRCode from '@/components/creator/CreatorQRCode';
 
 const CreatorDashboard = () => {
   const { data: creator, isLoading } = useMyCreator();
@@ -318,6 +319,14 @@ const CreatorDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Shareable QR Code */}
+        <CreatorQRCode
+          username={creator.username}
+          displayName={creator.display_name}
+          avatarUrl={creator.avatar_url}
+          themeColor={creator.theme_primary || '#E07B4C'}
+        />
       </div>
     </DashboardLayout>
   );
