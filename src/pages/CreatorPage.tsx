@@ -234,19 +234,6 @@ const CreatorPage = () => {
 
           {creator.bio && <p className="text-sm text-muted-foreground mb-3 line-clamp-3">{creator.bio}</p>}
 
-          <div className="flex items-center gap-4 text-sm mb-4">
-            <div className="flex items-center gap-1.5">
-              <Users className="w-4 h-4" style={{ color: themeColor }} />
-              <span className="font-semibold">{creator.total_supporters || 0}</span>
-              <span className="text-muted-foreground text-xs">supporters</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Heart className="w-4 h-4" style={{ color: themeColor }} />
-              <span className="font-semibold">KSh {Number(creator.total_raised || 0).toLocaleString()}</span>
-              <span className="text-muted-foreground text-xs">raised</span>
-            </div>
-          </div>
-
           {/* Links - Horizontal scroll */}
           {links && links.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide -mx-4 px-4">
