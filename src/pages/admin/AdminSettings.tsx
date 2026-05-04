@@ -695,9 +695,19 @@ const AdminSettings = () => {
                 <Key className="w-5 h-5 text-primary" />
                 API Keys & Integrations
               </CardTitle>
-              <CardDescription>Configure third-party service credentials. Social login keys are used platform-wide.</CardDescription>
+              <CardDescription>Configure third-party service credentials. Social login keys are used platform-wide. Toggle below to expose the "Sign in with Google" button site-wide.</CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="flex items-center justify-between rounded-lg border p-3 mb-4">
+                <div>
+                  <p className="font-medium">Enable "Sign in with Google"</p>
+                  <p className="text-xs text-muted-foreground">Shows the Google button on the login & signup pages.</p>
+                </div>
+                <Switch
+                  checked={settings.social_google_enabled === true || settings.social_google_enabled === 'true'}
+                  onCheckedChange={(c) => handleChange('social_google_enabled', c)}
+                />
+              </div>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Google Client ID</Label>
