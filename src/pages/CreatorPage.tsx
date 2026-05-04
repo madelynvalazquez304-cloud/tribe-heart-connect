@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Users, Share2, Check, ExternalLink, Phone, Gift, Wallet } from 'lucide-react';
+import { Heart, Share2, Check, ExternalLink, Phone, Gift, Wallet } from 'lucide-react';
 import GiftingPanel from '@/components/GiftingPanel';
 import GiftAnimationOverlay from '@/components/GiftAnimationOverlay';
 import ProfileLoadingSpinner from '@/components/ProfileLoadingSpinner';
