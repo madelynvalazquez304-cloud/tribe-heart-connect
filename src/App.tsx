@@ -21,6 +21,7 @@ import ResetPassword from "./pages/ResetPassword";
 import UserDashboard from "./pages/UserDashboard";
 import BecomeCreator from "./pages/BecomeCreator";
 import Contact from "./pages/Contact";
+import CompleteProfile from "./pages/CompleteProfile";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -89,6 +90,11 @@ const App = () => (
             <Route path="/become-creator" element={
               <ProtectedRoute>
                 <BecomeCreator />
+              </ProtectedRoute>
+            } />
+            <Route path="/complete-profile" element={
+              <ProtectedRoute>
+                <CompleteProfile />
               </ProtectedRoute>
             } />
             {/* User Account */}
