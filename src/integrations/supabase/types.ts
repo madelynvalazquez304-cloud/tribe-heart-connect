@@ -148,6 +148,144 @@ export type Database = {
           },
         ]
       }
+      brand_deal_requests: {
+        Row: {
+          admin_notes: string | null
+          budget_max: number | null
+          budget_min: number | null
+          campaign_brief: string
+          company_name: string
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          created_at: string
+          currency: string | null
+          deliverables: string | null
+          id: string
+          industry: string | null
+          preferred_category: string | null
+          preferred_creator_username: string | null
+          status: string
+          target_audience: string | null
+          timeline_end: string | null
+          timeline_start: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          campaign_brief: string
+          company_name: string
+          contact_email: string
+          contact_name: string
+          contact_phone?: string | null
+          created_at?: string
+          currency?: string | null
+          deliverables?: string | null
+          id?: string
+          industry?: string | null
+          preferred_category?: string | null
+          preferred_creator_username?: string | null
+          status?: string
+          target_audience?: string | null
+          timeline_end?: string | null
+          timeline_start?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          campaign_brief?: string
+          company_name?: string
+          contact_email?: string
+          contact_name?: string
+          contact_phone?: string | null
+          created_at?: string
+          currency?: string | null
+          deliverables?: string | null
+          id?: string
+          industry?: string | null
+          preferred_category?: string | null
+          preferred_creator_username?: string | null
+          status?: string
+          target_audience?: string | null
+          timeline_end?: string | null
+          timeline_start?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      brand_deals: {
+        Row: {
+          admin_notes: string | null
+          brand_name: string
+          brief: string | null
+          campaign_title: string
+          contract_url: string | null
+          created_at: string
+          creator_amount: number
+          creator_id: string
+          currency: string | null
+          deliverables: string | null
+          end_date: string | null
+          gross_amount: number
+          id: string
+          payment_status: string
+          platform_fee: number
+          request_id: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          brand_name: string
+          brief?: string | null
+          campaign_title: string
+          contract_url?: string | null
+          created_at?: string
+          creator_amount?: number
+          creator_id: string
+          currency?: string | null
+          deliverables?: string | null
+          end_date?: string | null
+          gross_amount?: number
+          id?: string
+          payment_status?: string
+          platform_fee?: number
+          request_id?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          brand_name?: string
+          brief?: string | null
+          campaign_title?: string
+          contract_url?: string | null
+          created_at?: string
+          creator_amount?: number
+          creator_id?: string
+          currency?: string | null
+          deliverables?: string | null
+          end_date?: string | null
+          gross_amount?: number
+          id?: string
+          payment_status?: string
+          platform_fee?: number
+          request_id?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campaign_contributions: {
         Row: {
           amount: number
