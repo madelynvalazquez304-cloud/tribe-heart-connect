@@ -52,6 +52,9 @@ const Header = () => {
             <Link to="/vote" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
               Awards
             </Link>
+            <Link to="/advertise" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+              For Brands
+            </Link>
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
