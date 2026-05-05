@@ -87,13 +87,17 @@ const Login = () => {
   // Redirect if already logged in (and 2FA not pending)
   useEffect(() => {
     if (!authLoading && user && !twoFa?.required) {
-      if (isAdmin) {
-        navigate('/admin');
-      } else if (isCreator) {
-        navigate('/dashboard');
-      } else {
+      (async () => {
+        if (isAdmin) { navigate('/admin'); return; }
+        if (isCreator) { navigate('/dashboard'); return; }
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (!prof?.full_name || !prof?.phone) { navigate('/complete-profile', { replace: true }); return; }
         navigate('/account');
-      }
+      })();
     }
   }, [user, isAdmin, isCreator, authLoading, navigate, twoFa]);
 
