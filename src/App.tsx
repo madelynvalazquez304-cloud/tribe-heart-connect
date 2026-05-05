@@ -22,6 +22,7 @@ import UserDashboard from "./pages/UserDashboard";
 import BecomeCreator from "./pages/BecomeCreator";
 import Contact from "./pages/Contact";
 import CompleteProfile from "./pages/CompleteProfile";
+import Advertise from "./pages/Advertise";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -57,9 +58,11 @@ import AdminGifts from "./pages/admin/AdminGifts";
 import AdminPartners from "./pages/admin/AdminPartners";
 import AdminDisabledAccounts from "./pages/admin/AdminDisabledAccounts";
 import AdminOrders from "./pages/admin/AdminOrders";
+import AdminBrandDeals from "./pages/admin/AdminBrandDeals";
 
 // Additional Creator Pages
 import CreatorOrders from "./pages/creator/CreatorOrders";
+import CreatorBrandDeals from "./pages/creator/CreatorBrandDeals";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +90,7 @@ const App = () => (
             <Route path="/vote/:slug" element={<VotingPage />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/advertise" element={<Advertise />} />
             <Route path="/become-creator" element={
               <ProtectedRoute>
                 <BecomeCreator />
@@ -185,6 +189,11 @@ const App = () => (
                 <AdminOrders />
               </ProtectedRoute>
             } />
+            <Route path="/admin/brand-deals" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminBrandDeals />
+              </ProtectedRoute>
+            } />
 
             {/* Creator Routes */}
             <Route path="/dashboard" element={
@@ -255,6 +264,11 @@ const App = () => (
             <Route path="/dashboard/orders" element={
               <ProtectedRoute requiredRole="creator">
                 <CreatorOrders />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/brand-deals" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorBrandDeals />
               </ProtectedRoute>
             } />
 
