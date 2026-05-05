@@ -5,7 +5,7 @@ import { useMyCreator } from '@/hooks/useCreator';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, Users, Wallet, Trophy, Loader2, ExternalLink, Copy, TrendingUp, ShoppingBag, Ticket, Gift, ArrowUpRight, Sparkles, BarChart3 } from 'lucide-react';
+import { Heart, Users, Wallet, Trophy, Loader2, ExternalLink, Copy, TrendingUp, ShoppingBag, Ticket, Gift, ArrowUpRight, Sparkles, BarChart3, HeartPulse, Music2, GraduationCap, Radio, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -327,6 +327,80 @@ const CreatorDashboard = () => {
           avatarUrl={creator.avatar_url}
           themeColor={creator.theme_primary || '#E07B4C'}
         />
+
+        {/* Coming Soon — Creator Programs */}
+        <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-secondary/40 via-background to-secondary/20">
+          <CardHeader className="px-4 sm:px-6">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-base sm:text-lg">Creator Programs</CardTitle>
+                <CardDescription className="text-xs">New revenue & wellbeing modules launching soon</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                {
+                  icon: HeartPulse,
+                  title: 'Medical Cover',
+                  desc: 'Affordable health insurance pooled across the TribeYangu community.',
+                  tint: 'from-rose-500/15 to-rose-500/5',
+                  iconColor: 'text-rose-500',
+                },
+                {
+                  icon: Music2,
+                  title: 'Skiza Tunes',
+                  desc: 'Turn your sound into ringback tones and earn per subscriber.',
+                  tint: 'from-violet-500/15 to-violet-500/5',
+                  iconColor: 'text-violet-500',
+                },
+                {
+                  icon: GraduationCap,
+                  title: 'Onboarding Academy',
+                  desc: 'Guided playbooks, masterclasses & 1:1 launch coaching.',
+                  tint: 'from-amber-500/15 to-amber-500/5',
+                  iconColor: 'text-amber-500',
+                },
+                {
+                  icon: Radio,
+                  title: 'Content Provider (CP)',
+                  desc: 'Distribute to Telcos, MNOs & streaming partners as a verified CP.',
+                  tint: 'from-emerald-500/15 to-emerald-500/5',
+                  iconColor: 'text-emerald-500',
+                },
+              ].map((p) => (
+                <div
+                  key={p.title}
+                  className={`relative rounded-2xl border border-border/60 bg-gradient-to-br ${p.tint} p-4 hover:shadow-lg transition-all`}
+                >
+                  <Badge variant="secondary" className="absolute top-3 right-3 text-[10px] gap-1">
+                    <Clock className="w-3 h-3" /> Soon
+                  </Badge>
+                  <div className={`w-10 h-10 rounded-xl bg-background/70 backdrop-blur flex items-center justify-center mb-3`}>
+                    <p.icon className={`w-5 h-5 ${p.iconColor}`} />
+                  </div>
+                  <h4 className="font-semibold text-sm mb-1">{p.title}</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-3">{p.desc}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-8 text-xs"
+                    onClick={() => toast.success(`We'll notify you when ${p.title} goes live!`)}
+                  >
+                    Notify me
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-4 text-center">
+              Want early access? Email <span className="text-primary font-medium">programs@tribeyangu.online</span>
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
