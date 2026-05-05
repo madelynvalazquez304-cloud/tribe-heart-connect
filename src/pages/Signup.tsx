@@ -62,13 +62,21 @@ const Signup = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      if (isAdmin) navigate('/admin');
-      else if (isCreator) navigate('/dashboard');
-      else {
+      (async () => {
+        if (isAdmin) { navigate('/admin'); return; }
+        if (isCreator) { navigate('/dashboard'); return; }
+        // Check profile completeness — Google sign-ups won't have phone yet.
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const incomplete = !prof?.full_name || !prof?.phone;
+        if (incomplete) { navigate('/complete-profile', { replace: true }); return; }
         const ref = searchParams.get('ref') || localStorage.getItem(REFERRAL_STORAGE_KEY);
         if (ref && isCreatorSignup) navigate('/become-creator');
         else navigate('/account');
-      }
+      })();
     }
   }, [user, isAdmin, isCreator, authLoading, navigate, searchParams, isCreatorSignup]);
 
