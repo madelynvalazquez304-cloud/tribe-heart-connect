@@ -30,7 +30,8 @@ import {
   Megaphone,
   Handshake,
   Ban,
-  ShoppingCart
+  ShoppingCart,
+  Briefcase
 } from 'lucide-react';
 import MobileDashboardNav from '@/components/MobileDashboardNav';
 import {
@@ -64,6 +65,7 @@ const adminNavItems: NavItem[] = [
   { label: 'Campaigns', href: '/admin/campaigns', icon: Megaphone },
   { label: 'Merchandise', href: '/admin/merchandise', icon: ShoppingBag },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+  { label: 'Brand Deals', href: '/admin/brand-deals', icon: Briefcase },
   { label: 'Events', href: '/admin/events', icon: Ticket },
   { label: 'Gifts', href: '/admin/gifts', icon: Gift },
   { label: 'Partners', href: '/admin/partners', icon: Handshake },
@@ -80,6 +82,7 @@ const creatorNavItems: NavItem[] = [
   { label: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
   { label: 'Merchandise', href: '/dashboard/merchandise', icon: ShoppingBag },
   { label: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
+  { label: 'Brand Deals', href: '/dashboard/brand-deals', icon: Briefcase },
   { label: 'Events', href: '/dashboard/events', icon: Ticket },
   { label: 'Withdrawals', href: '/dashboard/withdrawals', icon: Wallet },
   { label: 'Partners', href: '/dashboard/partners', icon: Handshake },
