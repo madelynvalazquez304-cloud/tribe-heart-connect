@@ -342,6 +342,45 @@ export type Database = {
           },
         ]
       }
+      campaign_features: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          featured_by_creator_id: string
+          id: string
+          message: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          featured_by_creator_id: string
+          id?: string
+          message?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          featured_by_creator_id?: string
+          id?: string
+          message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_features_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_features_featured_by_creator_id_fkey"
+            columns: ["featured_by_creator_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           banner_url: string | null

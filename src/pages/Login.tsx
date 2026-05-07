@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Mail, Lock, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
+import { Heart, Mail, Lock, Eye, EyeOff, Loader2, ShieldCheck, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { lovable } from '@/integrations/lovable';
 import { useSocialAuthEnabled } from '@/hooks/useFeatureFlags';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -43,6 +44,86 @@ const Login = () => {
   const navigate = useNavigate();
   const { data: socialFlags } = useSocialAuthEnabled();
   const [googleLoading, setGoogleLoading] = useState(false);
+  // Email OTP (passwordless) sign-in state — persisted so refresh doesn't lose progress.
+  const [emailOtp, setEmailOtp] = useState<{ stage: 'request' | 'verify'; email: string; code: string; sending: boolean; verifying: boolean }>(() => {
+    try {
+      const raw = localStorage.getItem('ty_email_otp_login');
+      if (!raw) return { stage: 'request', email: '', code: '', sending: false, verifying: false };
+      const p = JSON.parse(raw);
+      if (p.expiresAt && p.expiresAt < Date.now()) {
+        localStorage.removeItem('ty_email_otp_login');
+        return { stage: 'request', email: '', code: '', sending: false, verifying: false };
+      }
+      return { stage: p.stage || 'request', email: p.email || '', code: '', sending: false, verifying: false };
+    } catch { return { stage: 'request', email: '', code: '', sending: false, verifying: false }; }
+  });
+  const [otpResendIn, setOtpResendIn] = useState<number>(() => {
+    const until = Number(localStorage.getItem('ty_otp_resend_until') || 0);
+    return until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
+  });
+
+  useEffect(() => {
+    if (emailOtp.stage === 'verify' && emailOtp.email) {
+      localStorage.setItem('ty_email_otp_login', JSON.stringify({
+        stage: 'verify', email: emailOtp.email,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+      }));
+    } else {
+      localStorage.removeItem('ty_email_otp_login');
+    }
+  }, [emailOtp.stage, emailOtp.email]);
+
+  useEffect(() => {
+    if (otpResendIn > 0) localStorage.setItem('ty_otp_resend_until', String(Date.now() + otpResendIn * 1000));
+    else localStorage.removeItem('ty_otp_resend_until');
+  }, [otpResendIn]);
+
+  useEffect(() => {
+    if (otpResendIn <= 0) return;
+    const t = setInterval(() => setOtpResendIn((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [otpResendIn]);
+
+  const requestEmailOtp = async () => {
+    if (!emailOtp.email) { toast.error('Enter your email'); return; }
+    setEmailOtp((s) => ({ ...s, sending: true }));
+    const { error } = await supabase.auth.signInWithOtp({
+      email: emailOtp.email,
+      options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+    });
+    setEmailOtp((s) => ({ ...s, sending: false }));
+    if (error) { toast.error(error.message); return; }
+    setEmailOtp((s) => ({ ...s, stage: 'verify', code: '' }));
+    setOtpResendIn(45);
+    toast.success(`Code sent to ${emailOtp.email}. Check your inbox.`);
+  };
+
+  const verifyEmailOtp = async () => {
+    if (emailOtp.code.length !== 6) return;
+    setEmailOtp((s) => ({ ...s, verifying: true }));
+    const { error } = await supabase.auth.verifyOtp({
+      email: emailOtp.email,
+      token: emailOtp.code,
+      type: 'email',
+    });
+    setEmailOtp((s) => ({ ...s, verifying: false }));
+    if (error) { toast.error(error.message); return; }
+    toast.success('Welcome back!');
+    setEmailOtp({ stage: 'request', email: '', code: '', sending: false, verifying: false });
+  };
+
+  const resendEmailOtp = async () => {
+    if (otpResendIn > 0 || emailOtp.sending) return;
+    setEmailOtp((s) => ({ ...s, sending: true }));
+    const { error } = await supabase.auth.signInWithOtp({
+      email: emailOtp.email,
+      options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+    });
+    setEmailOtp((s) => ({ ...s, sending: false }));
+    if (error) { toast.error(error.message); return; }
+    setOtpResendIn(45);
+    toast.success('New code sent.');
+  };
 
   const signInWithGoogle = async () => {
     setGoogleLoading(true);
@@ -128,6 +209,13 @@ const Login = () => {
     try {
       const { data: { user: signedIn } } = await supabase.auth.getUser();
       if (signedIn) {
+        // Enforce admin-controlled email verification gate
+        if (socialFlags?.requireEmailVerify && !(signedIn as any).email_confirmed_at && !(signedIn as any).confirmed_at) {
+          await supabase.auth.signOut();
+          toast.error('Please verify your email address. Check your inbox for the verification link.');
+          setIsLoading(false);
+          return;
+        }
         const { data: tfa } = await supabase
           .from('user_2fa_settings')
           .select('is_enabled, method, email')
@@ -268,6 +356,13 @@ const Login = () => {
               </p>
             </div>
           ) : (
+          socialFlags?.emailOtp ? (
+          <Tabs defaultValue="password" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="password" className="gap-1.5"><Lock className="w-3.5 h-3.5" />Password</TabsTrigger>
+              <TabsTrigger value="otp" className="gap-1.5"><KeyRound className="w-3.5 h-3.5" />Email code</TabsTrigger>
+            </TabsList>
+            <TabsContent value="password">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -353,6 +448,80 @@ const Login = () => {
               )}
             </Button>
           </form>
+            </TabsContent>
+            <TabsContent value="otp">
+              {emailOtp.stage === 'request' ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">We'll email you a 6-digit code — no password needed.</p>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input type="email" placeholder="you@example.com" value={emailOtp.email}
+                        onChange={(e) => setEmailOtp({ ...emailOtp, email: e.target.value })} className="pl-10" />
+                    </div>
+                  </div>
+                  <Button onClick={requestEmailOtp} disabled={emailOtp.sending || !emailOtp.email} className="w-full" variant="hero">
+                    {emailOtp.sending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending…</> : 'Email me a code'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center mb-2">
+                      <KeyRound className="w-6 h-6 text-primary" />
+                    </div>
+                    <p className="text-sm">Enter the code we sent to <strong>{emailOtp.email}</strong></p>
+                  </div>
+                  <Input
+                    inputMode="numeric" maxLength={6} autoFocus value={emailOtp.code}
+                    onChange={(e) => setEmailOtp({ ...emailOtp, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                    placeholder="123456" className="text-center tracking-[10px] text-2xl font-bold"
+                  />
+                  <Button onClick={verifyEmailOtp} disabled={emailOtp.verifying || emailOtp.code.length !== 6} className="w-full" variant="hero">
+                    {emailOtp.verifying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : 'Verify & sign in'}
+                  </Button>
+                  <div className="flex items-center justify-between text-sm">
+                    <button type="button" onClick={resendEmailOtp} disabled={emailOtp.sending || otpResendIn > 0}
+                      className="text-primary hover:underline disabled:opacity-50 disabled:no-underline">
+                      {emailOtp.sending ? 'Sending…' : otpResendIn > 0 ? `Resend in ${otpResendIn}s` : 'Resend code'}
+                    </button>
+                    <button type="button" onClick={() => setEmailOtp({ stage: 'request', email: emailOtp.email, code: '', sending: false, verifying: false })}
+                      className="text-muted-foreground hover:text-foreground">
+                      Use another email
+                    </button>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+          ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input id="email" type="email" placeholder="you@example.com" value={email}
+                  onChange={(e) => setEmail(e.target.value)} className="pl-10" required />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••"
+                  value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 pr-10" required />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+            <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
+              {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</> : 'Sign In'}
+            </Button>
+          </form>
+          )
           )}
           {!twoFa?.required && socialFlags?.google && (
             <>

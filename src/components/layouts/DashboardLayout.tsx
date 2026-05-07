@@ -80,6 +80,7 @@ const creatorNavItems: NavItem[] = [
   { label: 'Donations', href: '/dashboard/donations', icon: Heart },
   { label: 'Gifts', href: '/dashboard/gifts', icon: Gift },
   { label: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
+  { label: 'Mchango', href: '/dashboard/mchango', icon: Handshake },
   { label: 'Merchandise', href: '/dashboard/merchandise', icon: ShoppingBag },
   { label: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
   { label: 'Brand Deals', href: '/dashboard/brand-deals', icon: Briefcase },

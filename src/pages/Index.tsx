@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Heart, Users, ShoppingBag, Ticket, ArrowRight, Sparkles, Shield, Zap, Trophy, Play, Star, TrendingUp, CheckCircle, Globe, Gift, BarChart3, Megaphone, ArrowUpRight } from "lucide-react";
+import { Heart, Users, ShoppingBag, Ticket, ArrowRight, Sparkles, Shield, Zap, Trophy, Play, Star, TrendingUp, CheckCircle, Globe, Gift, BarChart3, Megaphone, ArrowUpRight, Briefcase, Handshake } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
@@ -458,6 +458,58 @@ const CTASection = () => (
   </section>
 );
 
+/* ─── Talent Agency Section ─── */
+const TalentAgencySection = () => (
+  <section className="py-20 relative overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+    <div className="container mx-auto px-4 relative">
+      <div className="grid md:grid-cols-2 gap-10 items-center max-w-5xl mx-auto">
+        <div>
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-4">
+            <Briefcase className="w-4 h-4" /> Also a Talent Agency
+          </div>
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+            We connect creators with <span className="text-primary">brands that matter</span>
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            Beyond fan support, our in-house talent team negotiates brand deals, sponsorships, and campaigns on your behalf — and protects both sides with escrow-backed contracts.
+          </p>
+          <ul className="space-y-3 mb-6">
+            {[
+              'Vetted brands, vetted creators',
+              'Escrow protection on every deal',
+              'Transparent revenue splits',
+              'Personalized matchmaking',
+            ].map((t) => (
+              <li key={t} className="flex items-center gap-2 text-sm">
+                <CheckCircle className="w-4 h-4 text-primary" /> {t}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild className="rounded-full"><Link to="/advertise">Brands: post a brief</Link></Button>
+            <Button asChild variant="outline" className="rounded-full"><Link to="/signup">Creators: get matched</Link></Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { icon: Handshake, title: 'Brand Deals', desc: 'Long-term partnerships' },
+            { icon: Megaphone, title: 'Campaigns', desc: 'One-off launches' },
+            { icon: Shield, title: 'Escrow', desc: 'Funds held until delivery' },
+            { icon: Sparkles, title: 'Curation', desc: 'Hand-picked matches' },
+          ].map((c, i) => (
+            <div key={i} className="bg-card border rounded-2xl p-5 hover-lift">
+              <c.icon className="w-7 h-7 text-primary mb-3" />
+              <p className="font-semibold">{c.title}</p>
+              <p className="text-xs text-muted-foreground">{c.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
 /* ─── Main Index ─── */
 const Index = () => {
   return (
@@ -466,6 +518,7 @@ const Index = () => {
       <HeroSection />
       <CreatorsShowcase />
       <FeaturesSection />
+      <TalentAgencySection />
       <HowItWorks />
       <TestimonialsSection />
       <TrustSection />

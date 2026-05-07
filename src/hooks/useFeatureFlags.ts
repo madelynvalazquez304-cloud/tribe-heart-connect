@@ -55,14 +55,16 @@ export const useSocialAuthEnabled = () => {
       const { data } = await supabase
         .from('platform_settings')
         .select('key, value')
-        .in('key', ['social_google_enabled']);
-      const map: Record<string, boolean> = { google: false };
+        .in('key', ['social_google_enabled', 'email_otp_login_enabled', 'signup_email_verification_required']);
+      const map: Record<string, boolean> = { google: false, emailOtp: true, requireEmailVerify: false };
       (data || []).forEach((row: any) => {
         if (row.key === 'social_google_enabled') map.google = truthy(row.value);
+        if (row.key === 'email_otp_login_enabled') map.emailOtp = truthy(row.value);
+        if (row.key === 'signup_email_verification_required') map.requireEmailVerify = truthy(row.value);
       });
       return map;
     },
     staleTime: 60 * 1000,
-    placeholderData: { google: false },
+    placeholderData: { google: false, emailOtp: true, requireEmailVerify: false },
   });
 };

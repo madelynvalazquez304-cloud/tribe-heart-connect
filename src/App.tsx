@@ -47,6 +47,7 @@ import CreatorMerchandise from "./pages/creator/CreatorMerchandise";
 import CreatorDomain from "./pages/creator/CreatorDomain";
 import CreatorAnalytics from "./pages/creator/CreatorAnalytics";
 import CreatorCampaigns from "./pages/creator/CreatorCampaigns";
+import CreatorMchango from "./pages/creator/CreatorMchango";
 import CreatorGifts from "./pages/creator/CreatorGifts";
 import CreatorPartners from "./pages/creator/CreatorPartners";
 
@@ -249,6 +250,11 @@ const App = () => (
             <Route path="/dashboard/campaigns" element={
               <ProtectedRoute requiredRole="creator">
                 <CreatorCampaigns />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/mchango" element={
+              <ProtectedRoute requiredRole="creator">
+                <CreatorMchango />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/gifts" element={
