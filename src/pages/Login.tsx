@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Mail, Lock, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
+import { Heart, Mail, Lock, Eye, EyeOff, Loader2, ShieldCheck, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { lovable } from '@/integrations/lovable';
 import { useSocialAuthEnabled } from '@/hooks/useFeatureFlags';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -43,6 +44,86 @@ const Login = () => {
   const navigate = useNavigate();
   const { data: socialFlags } = useSocialAuthEnabled();
   const [googleLoading, setGoogleLoading] = useState(false);
+  // Email OTP (passwordless) sign-in state — persisted so refresh doesn't lose progress.
+  const [emailOtp, setEmailOtp] = useState<{ stage: 'request' | 'verify'; email: string; code: string; sending: boolean; verifying: boolean }>(() => {
+    try {
+      const raw = localStorage.getItem('ty_email_otp_login');
+      if (!raw) return { stage: 'request', email: '', code: '', sending: false, verifying: false };
+      const p = JSON.parse(raw);
+      if (p.expiresAt && p.expiresAt < Date.now()) {
+        localStorage.removeItem('ty_email_otp_login');
+        return { stage: 'request', email: '', code: '', sending: false, verifying: false };
+      }
+      return { stage: p.stage || 'request', email: p.email || '', code: '', sending: false, verifying: false };
+    } catch { return { stage: 'request', email: '', code: '', sending: false, verifying: false }; }
+  });
+  const [otpResendIn, setOtpResendIn] = useState<number>(() => {
+    const until = Number(localStorage.getItem('ty_otp_resend_until') || 0);
+    return until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
+  });
+
+  useEffect(() => {
+    if (emailOtp.stage === 'verify' && emailOtp.email) {
+      localStorage.setItem('ty_email_otp_login', JSON.stringify({
+        stage: 'verify', email: emailOtp.email,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+      }));
+    } else {
+      localStorage.removeItem('ty_email_otp_login');
+    }
+  }, [emailOtp.stage, emailOtp.email]);
+
+  useEffect(() => {
+    if (otpResendIn > 0) localStorage.setItem('ty_otp_resend_until', String(Date.now() + otpResendIn * 1000));
+    else localStorage.removeItem('ty_otp_resend_until');
+  }, [otpResendIn]);
+
+  useEffect(() => {
+    if (otpResendIn <= 0) return;
+    const t = setInterval(() => setOtpResendIn((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [otpResendIn]);
+
+  const requestEmailOtp = async () => {
+    if (!emailOtp.email) { toast.error('Enter your email'); return; }
+    setEmailOtp((s) => ({ ...s, sending: true }));
+    const { error } = await supabase.auth.signInWithOtp({
+      email: emailOtp.email,
+      options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+    });
+    setEmailOtp((s) => ({ ...s, sending: false }));
+    if (error) { toast.error(error.message); return; }
+    setEmailOtp((s) => ({ ...s, stage: 'verify', code: '' }));
+    setOtpResendIn(45);
+    toast.success(`Code sent to ${emailOtp.email}. Check your inbox.`);
+  };
+
+  const verifyEmailOtp = async () => {
+    if (emailOtp.code.length !== 6) return;
+    setEmailOtp((s) => ({ ...s, verifying: true }));
+    const { error } = await supabase.auth.verifyOtp({
+      email: emailOtp.email,
+      token: emailOtp.code,
+      type: 'email',
+    });
+    setEmailOtp((s) => ({ ...s, verifying: false }));
+    if (error) { toast.error(error.message); return; }
+    toast.success('Welcome back!');
+    setEmailOtp({ stage: 'request', email: '', code: '', sending: false, verifying: false });
+  };
+
+  const resendEmailOtp = async () => {
+    if (otpResendIn > 0 || emailOtp.sending) return;
+    setEmailOtp((s) => ({ ...s, sending: true }));
+    const { error } = await supabase.auth.signInWithOtp({
+      email: emailOtp.email,
+      options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+    });
+    setEmailOtp((s) => ({ ...s, sending: false }));
+    if (error) { toast.error(error.message); return; }
+    setOtpResendIn(45);
+    toast.success('New code sent.');
+  };
 
   const signInWithGoogle = async () => {
     setGoogleLoading(true);
