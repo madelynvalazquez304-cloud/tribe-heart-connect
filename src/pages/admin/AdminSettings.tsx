@@ -747,9 +747,12 @@ const AdminSettings = () => {
                   { key: 'feature_merchandise_enabled', label: 'Merchandise Store' },
                   { key: 'feature_gifts_enabled', label: 'Virtual Gifts' },
                   { key: 'feature_awards_enabled', label: 'Awards & Voting' },
+                  { key: 'email_otp_login_enabled', label: 'Sign in with Email OTP' },
+                  { key: 'signup_email_verification_required', label: 'Require email verification on signup' },
                 ].map(({ key, label }) => {
                   const v = settings[key];
-                  const enabled = v === undefined ? true : v === true || v === 'true';
+                  const defaultOn = key !== 'signup_email_verification_required';
+                  const enabled = v === undefined ? defaultOn : v === true || v === 'true';
                   return (
                     <div key={key} className="flex items-center justify-between rounded-lg border p-3">
                       <div>
