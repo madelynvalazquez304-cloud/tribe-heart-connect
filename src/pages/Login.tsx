@@ -349,6 +349,13 @@ const Login = () => {
               </p>
             </div>
           ) : (
+          socialFlags?.emailOtp ? (
+          <Tabs defaultValue="password" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="password" className="gap-1.5"><Lock className="w-3.5 h-3.5" />Password</TabsTrigger>
+              <TabsTrigger value="otp" className="gap-1.5"><KeyRound className="w-3.5 h-3.5" />Email code</TabsTrigger>
+            </TabsList>
+            <TabsContent value="password">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -434,6 +441,80 @@ const Login = () => {
               )}
             </Button>
           </form>
+            </TabsContent>
+            <TabsContent value="otp">
+              {emailOtp.stage === 'request' ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">We'll email you a 6-digit code — no password needed.</p>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input type="email" placeholder="you@example.com" value={emailOtp.email}
+                        onChange={(e) => setEmailOtp({ ...emailOtp, email: e.target.value })} className="pl-10" />
+                    </div>
+                  </div>
+                  <Button onClick={requestEmailOtp} disabled={emailOtp.sending || !emailOtp.email} className="w-full" variant="hero">
+                    {emailOtp.sending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending…</> : 'Email me a code'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center mb-2">
+                      <KeyRound className="w-6 h-6 text-primary" />
+                    </div>
+                    <p className="text-sm">Enter the code we sent to <strong>{emailOtp.email}</strong></p>
+                  </div>
+                  <Input
+                    inputMode="numeric" maxLength={6} autoFocus value={emailOtp.code}
+                    onChange={(e) => setEmailOtp({ ...emailOtp, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                    placeholder="123456" className="text-center tracking-[10px] text-2xl font-bold"
+                  />
+                  <Button onClick={verifyEmailOtp} disabled={emailOtp.verifying || emailOtp.code.length !== 6} className="w-full" variant="hero">
+                    {emailOtp.verifying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : 'Verify & sign in'}
+                  </Button>
+                  <div className="flex items-center justify-between text-sm">
+                    <button type="button" onClick={resendEmailOtp} disabled={emailOtp.sending || otpResendIn > 0}
+                      className="text-primary hover:underline disabled:opacity-50 disabled:no-underline">
+                      {emailOtp.sending ? 'Sending…' : otpResendIn > 0 ? `Resend in ${otpResendIn}s` : 'Resend code'}
+                    </button>
+                    <button type="button" onClick={() => setEmailOtp({ stage: 'request', email: emailOtp.email, code: '', sending: false, verifying: false })}
+                      className="text-muted-foreground hover:text-foreground">
+                      Use another email
+                    </button>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+          ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input id="email" type="email" placeholder="you@example.com" value={email}
+                  onChange={(e) => setEmail(e.target.value)} className="pl-10" required />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••"
+                  value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 pr-10" required />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+            <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
+              {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</> : 'Sign In'}
+            </Button>
+          </form>
+          )
           )}
           {!twoFa?.required && socialFlags?.google && (
             <>
