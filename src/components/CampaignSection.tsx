@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -111,6 +111,25 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
     setPaymentStatus('processing');
     contribute.mutate();
   };
+
+  // Poll the campaign_contributions row directly to detect success/failure.
+  // The modal's onComplete is best-effort; this is the source of truth.
+  useEffect(() => {
+    if (paymentStatus !== 'polling' || !recordId) return;
+    const poll = setInterval(async () => {
+      const { data } = await supabase.functions.invoke('check-payment', {
+        body: { recordId, type: 'campaign' },
+      });
+      const s = (data as any)?.status;
+      if (s === 'completed') { setPaymentStatus('success'); clearInterval(poll); }
+      else if (s === 'failed' || s === 'cancelled') { setPaymentStatus('failed'); clearInterval(poll); }
+    }, 3000);
+    const timeout = setTimeout(() => {
+      clearInterval(poll);
+      setPaymentStatus((cur) => (cur === 'polling' ? 'failed' : cur));
+    }, 120000);
+    return () => { clearInterval(poll); clearTimeout(timeout); };
+  }, [paymentStatus, recordId]);
 
   const resetPayment = () => {
     if (paymentStatus === 'success') {
