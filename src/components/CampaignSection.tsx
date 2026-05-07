@@ -42,10 +42,43 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
         current_amount: Number(c?.current_amount ?? 0) || 0,
         goal_amount: Number(c?.goal_amount ?? 0) || 0,
         supporter_count: Number(c?.supporter_count ?? 0) || 0,
+        _featured_by: null as null | { display_name: string; username: string; avatar_url: string | null },
       }));
     },
     enabled: !!creatorId
   });
+
+  // Mchango: campaigns this creator is amplifying ("featuring") for other creators.
+  // Money still routes to the original campaign owner via campaign_id.
+  const { data: featured } = useQuery({
+    queryKey: ['featured-campaigns', creatorId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('campaign_features')
+        .select(`
+          id, message, created_at,
+          campaign:campaigns(*, creator:creators(id, display_name, username, avatar_url))
+        `)
+        .eq('featured_by_creator_id', creatorId);
+      if (error) throw error;
+      return (data || [])
+        .filter((f: any) => f.campaign && f.campaign.status === 'active')
+        .map((f: any) => ({
+          ...f.campaign,
+          current_amount: Number(f.campaign.current_amount ?? 0) || 0,
+          goal_amount: Number(f.campaign.goal_amount ?? 0) || 0,
+          supporter_count: Number(f.campaign.supporter_count ?? 0) || 0,
+          _featured_by_message: f.message,
+          _origin_creator: f.campaign.creator,
+        }));
+    },
+    enabled: !!creatorId,
+  });
+
+  const allCampaigns = React.useMemo(
+    () => [...(campaigns || []), ...(featured || [])],
+    [campaigns, featured]
+  );
 
   // Fetch real contribution counts for accuracy
   const { data: contributionStats } = useQuery({
@@ -86,7 +119,8 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
         body: {
           phone: phone.replace(/\s/g, ''),
           amount: parsedAmount,
-          creatorId,
+          // route money to the campaign's actual owner (mchango/featured support)
+          creatorId: selectedCampaign.creator_id || creatorId,
           donorName: donorName || undefined,
           type: 'campaign',
           campaignId: selectedCampaign.id
@@ -144,7 +178,8 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
     setRecordId('');
   };
 
-  if (isLoading || !campaigns || campaigns.length === 0) return null;
+  if (isLoading) return null;
+  if (allCampaigns.length === 0) return null;
 
   const getRealAmount = (campaign: any | null | undefined) => {
     if (!campaign) return 0;
@@ -179,15 +214,16 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
         <div className="flex items-center gap-2 mb-4">
           <Target className="w-5 h-5" style={{ color: themeColor }} />
           <h3 className="font-semibold">Active Campaigns</h3>
-          <Badge variant="secondary">{campaigns.length}</Badge>
+          <Badge variant="secondary">{allCampaigns.length}</Badge>
         </div>
 
         <div className="space-y-4">
-          {campaigns.map((campaign) => {
+          {allCampaigns.map((campaign: any) => {
             const realAmount = getRealAmount(campaign);
             const realSupporters = getRealSupporters(campaign);
             const progress = getProgress(realAmount, campaign.goal_amount);
             const daysLeft = getDaysLeft(campaign.end_date);
+            const isFeatured = !!campaign._origin_creator;
             
             return (
               <div key={campaign.id} className="rounded-lg border overflow-hidden">
@@ -200,12 +236,21 @@ const CampaignSection: React.FC<CampaignSectionProps> = ({ creatorId, creatorNam
                   />
                 )}
                 <div className="p-4">
+                  {isFeatured && (
+                    <div className="flex items-center gap-2 mb-2 text-xs">
+                      <Badge style={{ backgroundColor: themeColor }} className="text-white">🤝 Mchango — featured by {creatorName}</Badge>
+                      <span className="text-muted-foreground">→ supports @{campaign._origin_creator.username}</span>
+                    </div>
+                  )}
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="font-semibold">{campaign.title}</h4>
                     {progress >= 100 && (
                       <Badge className="bg-green-600 text-white shrink-0">Goal Reached! 🎉</Badge>
                     )}
                   </div>
+                  {isFeatured && campaign._featured_by_message && (
+                    <p className="text-xs italic text-muted-foreground mb-2">"{campaign._featured_by_message}" — {creatorName}</p>
+                  )}
                   {campaign.description && (
                     <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{campaign.description}</p>
                   )}
