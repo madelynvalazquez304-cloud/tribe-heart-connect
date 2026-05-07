@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Heart, Users, ShoppingBag, Ticket, ArrowRight, Sparkles, Shield, Zap, Trophy, Play, Star, TrendingUp, CheckCircle, Globe, Gift, BarChart3, Megaphone, ArrowUpRight } from "lucide-react";
+import { Heart, Users, ShoppingBag, Ticket, ArrowRight, Sparkles, Shield, Zap, Trophy, Play, Star, TrendingUp, CheckCircle, Globe, Gift, BarChart3, Megaphone, ArrowUpRight, Briefcase, Handshake } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
