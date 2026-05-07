@@ -209,6 +209,13 @@ const Login = () => {
     try {
       const { data: { user: signedIn } } = await supabase.auth.getUser();
       if (signedIn) {
+        // Enforce admin-controlled email verification gate
+        if (socialFlags?.requireEmailVerify && !(signedIn as any).email_confirmed_at && !(signedIn as any).confirmed_at) {
+          await supabase.auth.signOut();
+          toast.error('Please verify your email address. Check your inbox for the verification link.');
+          setIsLoading(false);
+          return;
+        }
         const { data: tfa } = await supabase
           .from('user_2fa_settings')
           .select('is_enabled, method, email')
