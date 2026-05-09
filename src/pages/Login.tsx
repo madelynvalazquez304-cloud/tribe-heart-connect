@@ -87,27 +87,34 @@ const Login = () => {
   const requestEmailOtp = async () => {
     if (!emailOtp.email) { toast.error('Enter your email'); return; }
     setEmailOtp((s) => ({ ...s, sending: true }));
-    const { error } = await supabase.auth.signInWithOtp({
-      email: emailOtp.email,
-      options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+    const { data, error } = await supabase.functions.invoke('send-login-otp', {
+      body: { email: emailOtp.email },
     });
     setEmailOtp((s) => ({ ...s, sending: false }));
-    if (error) { toast.error(error.message); return; }
+    if (error || (data && data.ok === false && data.code !== 'cooldown')) {
+      toast.error((error as any)?.message || data?.error || 'Could not send code'); return;
+    }
+    if (data?.code === 'cooldown') { toast.error(data.error); return; }
     setEmailOtp((s) => ({ ...s, stage: 'verify', code: '' }));
     setOtpResendIn(45);
-    toast.success(`Code sent to ${emailOtp.email}. Check your inbox.`);
+    toast.success(`6-digit code sent to ${emailOtp.email}. Check your inbox.`);
   };
 
   const verifyEmailOtp = async () => {
     if (emailOtp.code.length !== 6) return;
     setEmailOtp((s) => ({ ...s, verifying: true }));
-    const { error } = await supabase.auth.verifyOtp({
-      email: emailOtp.email,
-      token: emailOtp.code,
-      type: 'email',
+    const { data, error } = await supabase.functions.invoke('verify-login-otp', {
+      body: { email: emailOtp.email, code: emailOtp.code },
+    });
+    if (error || !data?.ok) {
+      setEmailOtp((s) => ({ ...s, verifying: false }));
+      toast.error((error as any)?.message || data?.error || 'Invalid code'); return;
+    }
+    const { error: vErr } = await supabase.auth.verifyOtp({
+      email: data.email, token: data.token, type: 'magiclink',
     });
     setEmailOtp((s) => ({ ...s, verifying: false }));
-    if (error) { toast.error(error.message); return; }
+    if (vErr) { toast.error(vErr.message); return; }
     toast.success('Welcome back!');
     setEmailOtp({ stage: 'request', email: '', code: '', sending: false, verifying: false });
   };
@@ -115,12 +122,11 @@ const Login = () => {
   const resendEmailOtp = async () => {
     if (otpResendIn > 0 || emailOtp.sending) return;
     setEmailOtp((s) => ({ ...s, sending: true }));
-    const { error } = await supabase.auth.signInWithOtp({
-      email: emailOtp.email,
-      options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+    const { data, error } = await supabase.functions.invoke('send-login-otp', {
+      body: { email: emailOtp.email },
     });
     setEmailOtp((s) => ({ ...s, sending: false }));
-    if (error) { toast.error(error.message); return; }
+    if (error || (data && data.ok === false)) { toast.error((error as any)?.message || data?.error || 'Could not resend'); return; }
     setOtpResendIn(45);
     toast.success('New code sent.');
   };
