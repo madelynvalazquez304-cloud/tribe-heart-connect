@@ -1903,6 +1903,13 @@ export type Database = {
       withdrawals: {
         Row: {
           amount: number
+          auto_send_attempted_at: string | null
+          b2c_conversation_id: string | null
+          b2c_originator_conversation_id: string | null
+          b2c_raw_callback: Json | null
+          b2c_result_code: string | null
+          b2c_result_desc: string | null
+          b2c_transaction_id: string | null
           created_at: string
           creator_id: string
           fee: number | null
@@ -1914,11 +1921,19 @@ export type Database = {
           processed_by: string | null
           reference: string | null
           rejection_reason: string | null
+          requires_review: boolean
           status: Database["public"]["Enums"]["withdrawal_status"] | null
           updated_at: string
         }
         Insert: {
           amount: number
+          auto_send_attempted_at?: string | null
+          b2c_conversation_id?: string | null
+          b2c_originator_conversation_id?: string | null
+          b2c_raw_callback?: Json | null
+          b2c_result_code?: string | null
+          b2c_result_desc?: string | null
+          b2c_transaction_id?: string | null
           created_at?: string
           creator_id: string
           fee?: number | null
@@ -1932,11 +1947,19 @@ export type Database = {
           processed_by?: string | null
           reference?: string | null
           rejection_reason?: string | null
+          requires_review?: boolean
           status?: Database["public"]["Enums"]["withdrawal_status"] | null
           updated_at?: string
         }
         Update: {
           amount?: number
+          auto_send_attempted_at?: string | null
+          b2c_conversation_id?: string | null
+          b2c_originator_conversation_id?: string | null
+          b2c_raw_callback?: Json | null
+          b2c_result_code?: string | null
+          b2c_result_desc?: string | null
+          b2c_transaction_id?: string | null
           created_at?: string
           creator_id?: string
           fee?: number | null
@@ -1950,6 +1973,7 @@ export type Database = {
           processed_by?: string | null
           reference?: string | null
           rejection_reason?: string | null
+          requires_review?: boolean
           status?: Database["public"]["Enums"]["withdrawal_status"] | null
           updated_at?: string
         }
