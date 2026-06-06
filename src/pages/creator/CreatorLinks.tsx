@@ -94,10 +94,16 @@ const CreatorLinks = () => {
       toast.error('Title and URL are required');
       return;
     }
+    // Normalize URL: ensure it has a protocol so it opens externally
+    let url = formData.url.trim();
+    if (!/^https?:\/\//i.test(url) && !/^mailto:|^tel:/i.test(url)) {
+      url = `https://${url.replace(/^\/+/, '')}`;
+    }
+    const payload = { ...formData, url };
     if (editingLink) {
-      updateLink.mutate({ ...formData, id: editingLink.id });
+      updateLink.mutate({ ...payload, id: editingLink.id });
     } else {
-      createLink.mutate(formData);
+      createLink.mutate(payload);
     }
   };
 

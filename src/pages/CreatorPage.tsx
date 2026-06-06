@@ -238,7 +238,7 @@ const CreatorPage = () => {
           {links && links.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide -mx-4 px-4">
               {links.map((link) => (
-                <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
+                <a key={link.id} href={/^https?:\/\//i.test(link.url) ? link.url : `https://${link.url.replace(/^\/+/, '')}`} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card border shadow-sm hover:shadow-md transition-all whitespace-nowrap text-xs">
                   <span className="text-base">{link.icon || '🔗'}</span>
                   <span className="font-medium">{link.title}</span>
