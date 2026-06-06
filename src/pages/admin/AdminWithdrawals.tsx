@@ -29,6 +29,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Json } from '@/integrations/supabase/types';
 import { notify } from '@/lib/notify';
+import B2cConfigCard from '@/components/admin/B2cConfigCard';
+import { Send, AlertTriangle } from 'lucide-react';
 
 type WithdrawalStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'rejected';
 
@@ -38,6 +40,7 @@ const AdminWithdrawals = () => {
   const [actionDialog, setActionDialog] = useState<{ type: 'approve' | 'reject' | null; withdrawal: any }>({ type: null, withdrawal: null });
   const [reason, setReason] = useState('');
   const [reference, setReference] = useState('');
+  const [sendingB2c, setSendingB2c] = useState<string | null>(null);
 
   const { data: withdrawals, isLoading } = useQuery({
     queryKey: ['admin-withdrawals'],
@@ -161,6 +164,40 @@ const AdminWithdrawals = () => {
 
   const byStatus = (status: WithdrawalStatus) => filteredWithdrawals?.filter(w => w.status === status) || [];
 
+  const handleSendB2c = async (withdrawal: any, override = false) => {
+    setSendingB2c(withdrawal.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('mpesa-b2c', {
+        body: { withdrawalId: withdrawal.id, override },
+      });
+      if (error) {
+        // Try to surface 409 review-required
+        const msg = (error as any)?.message || 'B2C request failed';
+        if (msg.toLowerCase().includes('threshold')) {
+          if (confirm('Amount exceeds auto-threshold. Manually approve and send?')) {
+            await handleSendB2c(withdrawal, true);
+            return;
+          }
+        }
+        toast.error(msg);
+      } else if ((data as any)?.requiresReview) {
+        if (confirm('Amount exceeds auto-threshold. Manually approve and send?')) {
+          await handleSendB2c(withdrawal, true);
+          return;
+        }
+      } else if ((data as any)?.success) {
+        toast.success('B2C sent. Awaiting M-PESA confirmation…');
+        queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
+      } else if ((data as any)?.error) {
+        toast.error((data as any).error);
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'B2C failed');
+    } finally {
+      setSendingB2c(null);
+    }
+  };
+
   const getPaymentDetails = (withdrawal: any): Record<string, any> => {
     if (!withdrawal.payment_details) return {};
     return withdrawal.payment_details as Record<string, any>;
@@ -173,6 +210,8 @@ const AdminWithdrawals = () => {
           <h1 className="font-display text-3xl font-bold text-foreground">Withdrawals</h1>
           <p className="text-muted-foreground mt-1">Process creator withdrawal requests</p>
         </div>
+
+        <B2cConfigCard />
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -325,6 +364,20 @@ const AdminWithdrawals = () => {
                             {status === 'pending' && (
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-2">
+                                  {withdrawal.payment_method === 'mpesa' && (
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="bg-primary"
+                                      disabled={sendingB2c === withdrawal.id}
+                                      onClick={() => handleSendB2c(withdrawal)}
+                                    >
+                                      {sendingB2c === withdrawal.id
+                                        ? <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                        : <Send className="w-4 h-4 mr-1" />}
+                                      Send B2C
+                                    </Button>
+                                  )}
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -332,7 +385,7 @@ const AdminWithdrawals = () => {
                                     onClick={() => setActionDialog({ type: 'approve', withdrawal })}
                                   >
                                     <Check className="w-4 h-4 mr-1" />
-                                    Approve
+                                    Manual
                                   </Button>
                                   <Button
                                     variant="ghost"
@@ -344,6 +397,11 @@ const AdminWithdrawals = () => {
                                     Reject
                                   </Button>
                                 </div>
+                                {withdrawal.requires_review && (
+                                  <div className="flex items-center justify-end gap-1 text-xs text-amber-600 mt-1">
+                                    <AlertTriangle className="w-3 h-3" /> Requires manual review
+                                  </div>
+                                )}
                               </TableCell>
                             )}
                           </TableRow>
