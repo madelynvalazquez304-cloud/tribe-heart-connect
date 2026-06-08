@@ -23,6 +23,7 @@ import BecomeCreator from "./pages/BecomeCreator";
 import Contact from "./pages/Contact";
 import CompleteProfile from "./pages/CompleteProfile";
 import Advertise from "./pages/Advertise";
+import BrandDealPayment from "./pages/BrandDealPayment";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -92,6 +93,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/advertise" element={<Advertise />} />
+            <Route path="/brand-deals/pay/:dealId" element={<BrandDealPayment />} />
             <Route path="/become-creator" element={
               <ProtectedRoute>
                 <BecomeCreator />
