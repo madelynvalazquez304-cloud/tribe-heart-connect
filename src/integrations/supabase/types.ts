@@ -148,6 +148,103 @@ export type Database = {
           },
         ]
       }
+      brand_deal_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          deal_id: string
+          details: Json | null
+          event_type: string
+          id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          deal_id: string
+          details?: Json | null
+          event_type: string
+          id?: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          deal_id?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_deal_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "brand_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_deal_payments: {
+        Row: {
+          amount: number
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          currency: string
+          deal_id: string
+          id: string
+          method: string
+          notes: string | null
+          paid_by_email: string | null
+          proof_url: string | null
+          reference: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          currency?: string
+          deal_id: string
+          id?: string
+          method: string
+          notes?: string | null
+          paid_by_email?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          currency?: string
+          deal_id?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          paid_by_email?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_deal_payments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "brand_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_deal_requests: {
         Row: {
           admin_notes: string | null
@@ -223,20 +320,32 @@ export type Database = {
       brand_deals: {
         Row: {
           admin_notes: string | null
+          auto_release_at: string | null
+          brand_approved_at: string | null
+          brand_contact_name: string | null
+          brand_email: string | null
           brand_name: string
           brief: string | null
           campaign_title: string
+          contract_accepted_brand_at: string | null
+          contract_accepted_creator_at: string | null
+          contract_html: string | null
           contract_url: string | null
           created_at: string
           creator_amount: number
           creator_id: string
           currency: string | null
           deliverables: string | null
+          delivered_at: string | null
+          delivery_notes: string | null
           end_date: string | null
+          escrow_amount: number | null
           gross_amount: number
           id: string
+          invoice_number: string | null
           payment_status: string
           platform_fee: number
+          released_at: string | null
           request_id: string | null
           start_date: string | null
           status: string
@@ -244,20 +353,32 @@ export type Database = {
         }
         Insert: {
           admin_notes?: string | null
+          auto_release_at?: string | null
+          brand_approved_at?: string | null
+          brand_contact_name?: string | null
+          brand_email?: string | null
           brand_name: string
           brief?: string | null
           campaign_title: string
+          contract_accepted_brand_at?: string | null
+          contract_accepted_creator_at?: string | null
+          contract_html?: string | null
           contract_url?: string | null
           created_at?: string
           creator_amount?: number
           creator_id: string
           currency?: string | null
           deliverables?: string | null
+          delivered_at?: string | null
+          delivery_notes?: string | null
           end_date?: string | null
+          escrow_amount?: number | null
           gross_amount?: number
           id?: string
+          invoice_number?: string | null
           payment_status?: string
           platform_fee?: number
+          released_at?: string | null
           request_id?: string | null
           start_date?: string | null
           status?: string
@@ -265,20 +386,32 @@ export type Database = {
         }
         Update: {
           admin_notes?: string | null
+          auto_release_at?: string | null
+          brand_approved_at?: string | null
+          brand_contact_name?: string | null
+          brand_email?: string | null
           brand_name?: string
           brief?: string | null
           campaign_title?: string
+          contract_accepted_brand_at?: string | null
+          contract_accepted_creator_at?: string | null
+          contract_html?: string | null
           contract_url?: string | null
           created_at?: string
           creator_amount?: number
           creator_id?: string
           currency?: string | null
           deliverables?: string | null
+          delivered_at?: string | null
+          delivery_notes?: string | null
           end_date?: string | null
+          escrow_amount?: number | null
           gross_amount?: number
           id?: string
+          invoice_number?: string | null
           payment_status?: string
           platform_fee?: number
+          released_at?: string | null
           request_id?: string | null
           start_date?: string | null
           status?: string
@@ -2004,6 +2137,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_creator: { Args: { _user_id: string }; Returns: boolean }
+      release_brand_deal: { Args: { _deal_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "creator" | "user"

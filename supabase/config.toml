@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.mpesa-b2c-result]
 verify_jwt = false
+
+[functions.auto-release-brand-deals]
+verify_jwt = false
