@@ -26,13 +26,13 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
     const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claims?.claims) {
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+    if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: claims.claims.sub });
+    const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: userData.user.id });
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
     }
@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     await supabase.from("withdrawals").update({
       status: "processing",
       auto_send_attempted_at: new Date().toISOString(),
-      processed_by: claims.claims.sub,
+      processed_by: userData.user.id,
     }).eq("id", withdrawalId);
 
     const b2cBody = {
