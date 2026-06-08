@@ -107,13 +107,15 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
     const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claims?.claims) {
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      console.error("auth error", userErr);
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: isAdminData } = await admin.rpc("is_admin", { _user_id: claims.claims.sub });
+    const { data: isAdminData, error: adminErr } = await admin.rpc("is_admin", { _user_id: userData.user.id });
+    if (adminErr) console.error("is_admin error", adminErr);
     if (!isAdminData) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
     }
@@ -123,7 +125,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "password required" }), { status: 400, headers: corsHeaders });
     }
     const cert = environment === "production" ? PRODUCTION_CERT : SANDBOX_CERT;
-    const securityCredential = encryptWithCert(password, cert);
+    let securityCredential: string;
+    try {
+      securityCredential = encryptWithCert(password, cert);
+    } catch (encErr) {
+      console.error("encryption error", encErr);
+      return new Response(JSON.stringify({ error: "Encryption failed: " + (encErr as Error).message }), { status: 500, headers: corsHeaders });
+    }
 
     return new Response(JSON.stringify({ securityCredential }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
