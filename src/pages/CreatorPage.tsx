@@ -41,13 +41,13 @@ const CreatorPage = () => {
   useEffect(() => {
     const el = mainColumnRef.current;
     if (!el) return;
-    const measure = () => setHasMainContent(el.scrollHeight > 8);
+    // childElementCount is layout-independent, so it keeps working even when
+    // the column is visually hidden.
+    const measure = () => setHasMainContent(el.childElementCount > 0);
     measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
     const mutation = new MutationObserver(measure);
-    mutation.observe(el, { childList: true, subtree: true });
-    return () => { observer.disconnect(); mutation.disconnect(); };
+    mutation.observe(el, { childList: true });
+    return () => mutation.disconnect();
   });
 
   const { data: creator, isLoading, error } = useQuery({
