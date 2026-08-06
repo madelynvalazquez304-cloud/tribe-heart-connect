@@ -70,13 +70,13 @@ const HeroBand = () => {
             represented, negotiated and paid out through one house.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button size="lg" asChild className="bg-cream text-charcoal hover:bg-cream/90 rounded-md px-8 h-13 text-base font-semibold">
+            <Button size="lg" asChild className="bg-cream text-charcoal hover:bg-cream/90 rounded-md px-8 h-12 text-base font-semibold">
               <Link to="/advertise" className="gap-2">
                 Brands: post a brief
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild className="border-cream/25 bg-transparent text-cream hover:bg-cream/10 rounded-md px-8 h-13 text-base">
+            <Button size="lg" variant="outline" asChild className="border-cream/25 bg-transparent text-cream hover:bg-cream/10 rounded-md px-8 h-12 text-base">
               <Link to="/signup">Creators: apply to the roster</Link>
             </Button>
           </div>
@@ -336,10 +336,10 @@ const CTABand = () => (
           Brands get a shortlist in days. Creators get representation and a page that earns from day one.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button size="lg" asChild className="rounded-md px-8 h-13 text-base font-semibold">
+          <Button size="lg" asChild className="rounded-md px-8 h-12 text-base font-semibold">
             <Link to="/advertise" className="gap-2">Post a brief <ArrowRight className="w-4 h-4" /></Link>
           </Button>
-          <Button size="lg" variant="outline" asChild className="rounded-md px-8 h-13 text-base">
+          <Button size="lg" variant="outline" asChild className="rounded-md px-8 h-12 text-base">
             <Link to="/signup">Apply to the roster</Link>
           </Button>
         </div>
