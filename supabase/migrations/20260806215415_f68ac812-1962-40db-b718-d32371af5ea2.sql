@@ -1,0 +1,3 @@
+UPDATE public.platform_settings SET value = to_jsonb('A creator agency and monetization platform — brand deals, fan support, events and merch, managed end to end.'::text) WHERE category = 'branding' AND key = 'footer_description';
+UPDATE public.platform_settings SET value = to_jsonb('© 2026 TribeYangu. All rights reserved.'::text) WHERE category = 'branding' AND key = 'copyright_text';
+UPDATE public.platform_settings SET value = to_jsonb('Representation and monetization for creators'::text) WHERE category = 'branding' AND key = 'site_tagline';
