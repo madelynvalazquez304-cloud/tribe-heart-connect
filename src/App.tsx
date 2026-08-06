@@ -21,6 +21,7 @@ import ResetPassword from "./pages/ResetPassword";
 import UserDashboard from "./pages/UserDashboard";
 import BecomeCreator from "./pages/BecomeCreator";
 import Contact from "./pages/Contact";
+import { FaqPage, TermsPage, PrivacyPage } from "./pages/InfoPage";
 import CompleteProfile from "./pages/CompleteProfile";
 import Advertise from "./pages/Advertise";
 import BrandDealPayment from "./pages/BrandDealPayment";
@@ -92,6 +93,10 @@ const App = () => (
             <Route path="/vote/:slug" element={<VotingPage />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/faq" element={<FaqPage />} />
+            <Route path="/help" element={<FaqPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/advertise" element={<Advertise />} />
             <Route path="/brand-deals/pay/:dealId" element={<BrandDealPayment />} />
             <Route path="/become-creator" element={
