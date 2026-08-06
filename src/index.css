@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,123 +6,127 @@
 
 @layer base {
   :root {
-    /* TribeYangu — Vibrant Tropical Night */
-    --background: 210 25% 97%;
-    --foreground: 215 30% 12%;
+    /* Agency — Navy Trust (flat, no gradients) */
+    --background: 210 33% 98%;
+    --foreground: 224 61% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 30% 12%;
+    --card-foreground: 224 61% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 30% 12%;
+    --popover-foreground: 224 61% 15%;
 
-    /* Vivid Coral - Primary */
-    --primary: 350 78% 55%;
-    --primary-foreground: 0 0% 100%;
+    /* Deep navy - Primary */
+    --primary: 212 52% 25%;
+    --primary-foreground: 212 30% 96%;
 
-    /* Cool Lavender - Secondary */
-    --secondary: 240 20% 94%;
-    --secondary-foreground: 215 25% 20%;
+    /* Pale steel - Secondary */
+    --secondary: 212 30% 93%;
+    --secondary-foreground: 224 55% 18%;
 
-    /* Soft Mist */
-    --muted: 220 15% 92%;
-    --muted-foreground: 215 12% 48%;
+    --muted: 212 26% 95%;
+    --muted-foreground: 214 18% 42%;
 
-    /* Teal Accent */
-    --accent: 174 55% 42%;
+    /* Steel blue accent */
+    --accent: 208 46% 43%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 90%;
-    --input: 220 15% 90%;
-    --ring: 350 78% 55%;
+    --border: 212 22% 88%;
+    --input: 212 22% 88%;
+    --ring: 208 46% 43%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Custom TribeYangu tokens */
-    --terracotta: 350 78% 55%;
-    --terracotta-light: 350 70% 68%;
-    --terracotta-dark: 350 78% 42%;
-    
-    --cream: 210 25% 97%;
-    --cream-dark: 220 18% 92%;
-    
-    --sage: 174 55% 42%;
-    --sage-light: 174 45% 58%;
-    --sage-dark: 174 60% 30%;
-    
-    --charcoal: 215 30% 12%;
-    --charcoal-light: 215 20% 28%;
-    
-    --gold: 42 92% 56%;
-    --gold-light: 42 85% 68%;
+    /* Legacy brand token aliases, remapped to the navy system */
+    --terracotta: 208 46% 43%;
+    --terracotta-light: 205 52% 56%;
+    --terracotta-dark: 212 52% 25%;
 
-    /* Gradients */
-    --gradient-warm: linear-gradient(135deg, hsl(350, 78%, 55%) 0%, hsl(42, 92%, 56%) 100%);
-    --gradient-soft: linear-gradient(180deg, hsl(210, 25%, 97%) 0%, hsl(220, 18%, 95%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(215, 30%, 12%) 0%, hsl(250, 35%, 18%) 50%, hsl(215, 25%, 22%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(220, 18%, 97%) 100%);
+    --cream: 212 30% 95%;
+    --cream-dark: 212 26% 90%;
+
+    --sage: 208 46% 43%;
+    --sage-light: 205 52% 58%;
+    --sage-dark: 212 52% 25%;
+
+    --charcoal: 224 61% 15%;
+    --charcoal-light: 222 40% 26%;
+
+    --gold: 205 55% 52%;
+    --gold-light: 203 58% 64%;
+
+    /* Flat "gradient" tokens — solid fills, intentionally gradient-free */
+    --gradient-warm: hsl(212 52% 25%);
+    --gradient-soft: hsl(210 33% 98%);
+    --gradient-hero: hsl(224 61% 15%);
+    --gradient-card: hsl(0 0% 100%);
 
     /* Shadows */
-    --shadow-soft: 0 4px 20px -4px hsl(215 30% 12% / 0.06);
-    --shadow-warm: 0 8px 30px -8px hsl(350 78% 55% / 0.2);
-    --shadow-elevated: 0 20px 50px -15px hsl(215 30% 12% / 0.12);
+    --shadow-soft: 0 1px 2px 0 hsl(224 61% 15% / 0.06), 0 1px 3px 0 hsl(224 61% 15% / 0.04);
+    --shadow-warm: 0 6px 20px -8px hsl(212 52% 25% / 0.25);
+    --shadow-elevated: 0 12px 32px -12px hsl(224 61% 15% / 0.18);
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 30% 12%;
-    --sidebar-primary: 350 78% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 174 55% 42%;
+    --sidebar-foreground: 224 61% 15%;
+    --sidebar-primary: 212 52% 25%;
+    --sidebar-primary-foreground: 212 30% 96%;
+    --sidebar-accent: 208 46% 43%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 15% 90%;
-    --sidebar-ring: 350 78% 55%;
+    --sidebar-border: 212 22% 88%;
+    --sidebar-ring: 208 46% 43%;
   }
 
   .dark {
-    --background: 215 30% 8%;
-    --foreground: 210 20% 95%;
+    --background: 224 45% 8%;
+    --foreground: 212 30% 95%;
 
-    --card: 215 25% 12%;
-    --card-foreground: 210 20% 95%;
+    --card: 222 40% 12%;
+    --card-foreground: 212 30% 95%;
 
-    --popover: 215 30% 8%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 224 45% 8%;
+    --popover-foreground: 212 30% 95%;
 
-    --primary: 350 75% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 205 55% 58%;
+    --primary-foreground: 224 61% 12%;
 
-    --secondary: 215 20% 16%;
-    --secondary-foreground: 210 20% 95%;
+    --secondary: 222 32% 18%;
+    --secondary-foreground: 212 30% 95%;
 
-    --muted: 215 20% 16%;
-    --muted-foreground: 210 15% 55%;
+    --muted: 222 32% 18%;
+    --muted-foreground: 212 18% 62%;
 
-    --accent: 174 45% 48%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 208 46% 52%;
+    --accent-foreground: 224 61% 12%;
 
-    --destructive: 0 65% 55%;
+    --destructive: 0 58% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 20% 18%;
-    --input: 215 20% 18%;
-    --ring: 350 75% 60%;
+    --border: 222 28% 20%;
+    --input: 222 28% 20%;
+    --ring: 205 55% 58%;
 
-    --terracotta: 350 75% 60%;
-    --cream: 215 20% 14%;
-    --sage: 174 45% 48%;
-    --charcoal: 210 20% 95%;
-    --gold: 42 85% 58%;
+    --terracotta: 205 55% 58%;
+    --cream: 222 32% 16%;
+    --sage: 208 46% 52%;
+    --charcoal: 212 30% 95%;
+    --gold: 203 58% 62%;
 
-    --sidebar-background: 215 25% 10%;
-    --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 350 70% 62%;
-    --sidebar-primary-foreground: 215 25% 10%;
-    --sidebar-accent: 174 45% 48%;
-    --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 215 20% 18%;
-    --sidebar-ring: 350 70% 62%;
+    --gradient-warm: hsl(205 55% 58%);
+    --gradient-soft: hsl(224 45% 8%);
+    --gradient-hero: hsl(224 50% 10%);
+    --gradient-card: hsl(222 40% 12%);
+
+    --sidebar-background: 224 45% 10%;
+    --sidebar-foreground: 212 30% 95%;
+    --sidebar-primary: 205 55% 58%;
+    --sidebar-primary-foreground: 224 45% 10%;
+    --sidebar-accent: 208 46% 52%;
+    --sidebar-accent-foreground: 212 30% 95%;
+    --sidebar-border: 222 28% 20%;
+    --sidebar-ring: 205 55% 58%;
   }
 }
 
@@ -137,7 +141,8 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -171,10 +176,7 @@
   }
 
   .text-gradient {
-    background: var(--gradient-warm);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: hsl(var(--accent));
   }
 
   .organic-blob {
@@ -214,7 +216,8 @@
   /* Stat counter */
   .stat-card {
     @apply relative overflow-hidden rounded-2xl p-6;
-    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--secondary)) 100%);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
   }
 
   .stat-card::before {
