@@ -71,7 +71,7 @@ const Explore = () => {
               Discover & Support
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Find amazing African creators and be part of their journey
+              Discover vetted creators and be part of their journey
             </p>
           </div>
 
@@ -146,7 +146,7 @@ const Explore = () => {
                 <Link key={creator.id} to={`/${creator.username}`}>
                   <Card className="overflow-hidden group h-full hover:shadow-elevated transition-all duration-300 hover:-translate-y-1">
                     {/* Banner */}
-                    <div className="h-28 bg-gradient-to-br from-primary/20 via-accent/10 to-gold/10 relative overflow-hidden">
+                    <div className="h-28 bg-secondary relative overflow-hidden">
                       {creator.banner_url && (
                         <img
                           src={creator.banner_url}
@@ -154,7 +154,7 @@ const Explore = () => {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-card/60 to-transparent" />
+                      <div className="absolute inset-0 bg-transparent" />
                       <div className="absolute top-2 right-2 flex gap-1">
                         {creator.is_verified && (
                           <Badge className="bg-accent text-accent-foreground text-xs shadow-sm">✓ Verified</Badge>

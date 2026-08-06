@@ -73,14 +73,14 @@ const Advertise = () => {
   return (
     <>
       <Header />
-      <div className="min-h-screen pt-24 pb-16 bg-gradient-to-b from-background to-secondary/20">
+      <div className="min-h-screen pt-24 pb-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
               <Sparkles className="w-4 h-4" /> For Brands & Advertisers
             </div>
             <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Work with Africa's most-loved creators — safely.
+              Work with the most-loved creators on the roster — safely.
             </h1>
             <p className="text-lg text-muted-foreground">
               Submit your campaign brief. We match you with vetted creators, manage contracts, hold payment in escrow and deliver results — so you don't have to chase DMs.
