@@ -24,9 +24,12 @@ const Header = () => {
 
 
   const siteName = site?.site_name || 'TribeYangu';
-  const nameParts = siteName.includes('Tribe') 
-    ? [siteName.substring(0, siteName.indexOf('Tribe') + 5), siteName.substring(siteName.indexOf('Tribe') + 5)]
-    : [siteName, ''];
+  // Highlight the trailing word/segment of whatever name the admin has configured.
+  const trimmedName = siteName.trim();
+  const splitAt = trimmedName.lastIndexOf(' ');
+  const nameParts = splitAt > 0
+    ? [trimmedName.slice(0, splitAt + 1), trimmedName.slice(splitAt + 1)]
+    : [trimmedName, ''];
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
@@ -36,24 +39,27 @@ const Header = () => {
             {site?.site_logo_url ? (
               <img src={site.site_logo_url} alt={siteName} className="w-10 h-10 rounded-xl object-contain" />
             ) : (
-              <div className="w-10 h-10 rounded-xl gradient-warm flex items-center justify-center shadow-warm group-hover:shadow-elevated transition-all duration-300">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center group-hover:bg-accent transition-colors duration-300">
                 <Heart className="w-5 h-5 text-primary-foreground fill-current" />
               </div>
             )}
-            <span className="font-display text-xl md:text-2xl font-semibold text-foreground">
-              {nameParts[0]}<span className="text-primary">{nameParts[1]}</span>
+            <span className="font-display text-xl md:text-2xl font-semibold text-foreground tracking-tight">
+              {nameParts[0]}<span className="text-accent">{nameParts[1]}</span>
             </span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
+            <Link to="/advertise" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+              For Brands
+            </Link>
             <Link to="/explore" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
-              Explore Creators
+              Roster
             </Link>
             <Link to="/vote" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
               Awards
             </Link>
-            <Link to="/advertise" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
-              For Brands
+            <Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+              Contact
             </Link>
           </nav>
 
@@ -103,7 +109,7 @@ const Header = () => {
                   <Link to="/login">Log In</Link>
                 </Button>
                 <Button variant="hero" asChild>
-                  <Link to="/signup">Start Your Tribe</Link>
+                  <Link to="/signup">Join the Roster</Link>
                 </Button>
               </>
             )}
