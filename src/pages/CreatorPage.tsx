@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +34,21 @@ const CreatorPage = () => {
   const [paymentDialog, setPaymentDialog] = useState(false);
   const [_checkoutRequestId, setCheckoutRequestId] = useState('');
   const [recordId, setRecordId] = useState('');
+  // Collapse to a single centered column when the main column renders nothing
+  const mainColumnRef = useRef<HTMLDivElement>(null);
+  const [hasMainContent, setHasMainContent] = useState(true);
+
+  useEffect(() => {
+    const el = mainColumnRef.current;
+    if (!el) return;
+    // childElementCount is layout-independent, so it keeps working even when
+    // the column is visually hidden.
+    const measure = () => setHasMainContent(el.childElementCount > 0);
+    measure();
+    const mutation = new MutationObserver(measure);
+    mutation.observe(el, { childList: true });
+    return () => mutation.disconnect();
+  });
 
   const { data: creator, isLoading, error } = useQuery({
     queryKey: ['creator', username],
@@ -278,10 +293,10 @@ const CreatorPage = () => {
         </div>
 
         {/* Main content */}
-        <div className="px-4 max-w-4xl mx-auto mt-4">
-          <div className="grid lg:grid-cols-3 gap-6">
+        <div className={`px-4 mx-auto mt-4 ${hasMainContent ? 'max-w-4xl' : 'max-w-md'}`}>
+          <div className={hasMainContent ? 'grid lg:grid-cols-3 gap-6' : 'space-y-4'}>
             {/* Main Column */}
-            <div className="lg:col-span-2 space-y-4">
+            <div ref={mainColumnRef} className={`space-y-4 ${hasMainContent ? 'lg:col-span-2' : 'hidden'}`}>
               {features?.awards !== false && (
                 <CreatorAwardsSection creatorId={creator.id} creatorName={creator.display_name} themeColor={themeColor} />
               )}
@@ -297,7 +312,7 @@ const CreatorPage = () => {
             </div>
 
             {/* Support Sidebar */}
-            <div className="lg:col-span-1 space-y-4">
+            <div className={`space-y-4 ${hasMainContent ? 'lg:col-span-1' : ''}`}>
               {/* Gifting */}
               {features?.gifts !== false && (
                 <div id="gift-section">

@@ -302,12 +302,12 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-secondary/40 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
               <Heart className="w-6 h-6 text-primary-foreground" fill="currentColor" />
             </div>
             <span className="text-2xl font-bold text-foreground">TribeYangu</span>

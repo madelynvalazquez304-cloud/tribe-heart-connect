@@ -24,7 +24,7 @@ const MobileBottomNav: React.FC = () => {
 
   const navItems = [
     { label: 'Home', icon: Home, path: '/' },
-    { label: 'Explore', icon: Search, path: '/explore' },
+    { label: 'Roster', icon: Search, path: '/explore' },
     { label: 'Awards', icon: Trophy, path: '/vote' },
     { label: 'Account', icon: User, path: getDashboardPath() },
   ];
