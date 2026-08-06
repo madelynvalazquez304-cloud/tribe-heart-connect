@@ -16,7 +16,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent/10 hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         // TribeYangu Custom Variants
-        hero: "gradient-warm text-primary-foreground shadow-md hover:shadow-lg hover:-translate-y-1 font-semibold text-base",
+        hero: "bg-primary text-primary-foreground hover:bg-accent font-semibold text-base",
         soft: "bg-cream text-charcoal hover:bg-cream-dark shadow-sm",
         terracotta: "bg-terracotta text-primary-foreground hover:bg-terracotta-dark shadow-md hover:shadow-lg",
         sage: "bg-sage text-primary-foreground hover:bg-sage-dark",
