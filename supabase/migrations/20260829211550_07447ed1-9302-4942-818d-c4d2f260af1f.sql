@@ -1,0 +1,10 @@
+REVOKE ALL ON FUNCTION public.get_creator_available_balance(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_creator_available_balance(uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_creator_available_balance(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.request_withdrawal(numeric, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.request_withdrawal(numeric, jsonb) FROM anon;
+GRANT EXECUTE ON FUNCTION public.request_withdrawal(numeric, jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.claim_withdrawal_for_payout(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.claim_withdrawal_for_payout(uuid, uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.claim_withdrawal_for_payout(uuid, uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_withdrawal_for_payout(uuid, uuid) TO service_role;
