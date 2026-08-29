@@ -15,6 +15,7 @@ function formatPhone(raw: string): string {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  let bodyRaw = "";
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -37,38 +38,48 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
     }
 
-    const { withdrawalId, override } = await req.json();
+    bodyRaw = await req.text();
+    const { withdrawalId } = JSON.parse(bodyRaw || "{}");
     if (!withdrawalId) {
       return new Response(JSON.stringify({ error: "withdrawalId required" }), { status: 400, headers: corsHeaders });
     }
 
-    // Load withdrawal + creator phone
-    const { data: withdrawal, error: wErr } = await supabase
-      .from("withdrawals")
-      .select("*, creator:creators(id, display_name, mpesa_phone)")
-      .eq("id", withdrawalId)
-      .maybeSingle();
-    if (wErr || !withdrawal) {
-      return new Response(JSON.stringify({ error: "Withdrawal not found" }), { status: 404, headers: corsHeaders });
+    // Atomically claim the withdrawal (locks row, re-checks balance, blocks double payouts)
+    const { data: claim, error: claimErr } = await supabase.rpc("claim_withdrawal_for_payout", {
+      _withdrawal_id: withdrawalId,
+      _admin_id: userData.user.id,
+    });
+    if (claimErr) {
+      console.error("claim error", claimErr);
+      return new Response(JSON.stringify({ error: claimErr.message }), { status: 400, headers: corsHeaders });
     }
-    if (!["pending", "approved"].includes(withdrawal.status)) {
-      return new Response(JSON.stringify({ error: `Cannot send B2C for status ${withdrawal.status}` }), { status: 400, headers: corsHeaders });
+    const claimObj = claim as any;
+    if (!claimObj?.ok) {
+      return new Response(JSON.stringify({ error: claimObj?.error || "Cannot process withdrawal", requiresReview: !!claimObj?.requiresReview }), {
+        status: claimObj?.requiresReview ? 409 : 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+    const withdrawal = claimObj.withdrawal;
+
+    const revert = async (desc?: string) => {
+      await supabase.from("withdrawals").update({
+        status: withdrawal.status,
+        ...(desc ? { b2c_result_desc: desc } : {}),
+      }).eq("id", withdrawalId);
+    };
+
     if (withdrawal.payment_method !== "mpesa") {
+      await revert("Withdrawal is not M-PESA");
       return new Response(JSON.stringify({ error: "Withdrawal is not M-PESA" }), { status: 400, headers: corsHeaders });
     }
 
-    const phone = formatPhone((withdrawal.creator as any)?.mpesa_phone || (withdrawal.payment_details as any)?.phone || "");
+    const { data: creatorRow } = await supabase
+      .from("creators").select("mpesa_phone").eq("id", withdrawal.creator_id).maybeSingle();
+    const phone = formatPhone(creatorRow?.mpesa_phone || (withdrawal.payment_details as any)?.phone || "");
     if (!phone || phone.length < 12) {
+      await revert("Invalid recipient phone");
       return new Response(JSON.stringify({ error: "Invalid recipient phone" }), { status: 400, headers: corsHeaders });
-    }
-
-    // Auto-threshold check
-    const { data: thrSetting } = await supabase.from("platform_settings").select("value").eq("key", "b2c_auto_threshold").maybeSingle();
-    const threshold = Number((thrSetting?.value as any) ?? 50000);
-    if (!override && Number(withdrawal.net_amount) >= threshold) {
-      await supabase.from("withdrawals").update({ requires_review: true }).eq("id", withdrawalId);
-      return new Response(JSON.stringify({ error: "Amount exceeds auto-threshold. Manual override required.", requiresReview: true }), { status: 409, headers: corsHeaders });
     }
 
     // Load B2C config
@@ -80,12 +91,16 @@ Deno.serve(async (req) => {
       .eq("is_primary", true)
       .maybeSingle();
     if (!cfg?.config) {
+      await revert("M-PESA config missing");
       return new Response(JSON.stringify({ error: "M-PESA config missing" }), { status: 400, headers: corsHeaders });
     }
     const c = cfg.config as any;
     const required = ["consumer_key", "consumer_secret", "b2c_shortcode", "initiator_name", "security_credential"];
     for (const k of required) {
-      if (!c[k]) return new Response(JSON.stringify({ error: `B2C config missing: ${k}` }), { status: 400, headers: corsHeaders });
+      if (!c[k]) {
+        await revert(`B2C config missing: ${k}`);
+        return new Response(JSON.stringify({ error: `B2C config missing: ${k}` }), { status: 400, headers: corsHeaders });
+      }
     }
     const baseUrl = c.environment === "production" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
 
@@ -95,19 +110,16 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Basic ${auth}` },
     });
     if (!tokRes.ok) {
-      throw new Error("Failed to get M-PESA token");
+      const t = await tokRes.text();
+      await revert("M-PESA auth failed");
+      return new Response(JSON.stringify({ error: "Failed to authenticate with M-PESA. Check consumer key/secret and environment.", raw: t.slice(0, 300) }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
     const { access_token } = await tokRes.json();
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const callback = `${supabaseUrl}/functions/v1/mpesa-b2c-result`;
-
-    // Mark processing
-    await supabase.from("withdrawals").update({
-      status: "processing",
-      auto_send_attempted_at: new Date().toISOString(),
-      processed_by: userData.user.id,
-    }).eq("id", withdrawalId);
 
     const b2cBody = {
       OriginatorConversationID: `TY-${withdrawalId.slice(0, 8)}-${Date.now()}`,
@@ -139,16 +151,20 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } else {
-      await supabase.from("withdrawals").update({
-        status: "pending",
-        b2c_result_desc: result.errorMessage || result.ResponseDescription || "B2C request failed",
-      }).eq("id", withdrawalId);
+      await revert(result.errorMessage || result.ResponseDescription || "B2C request failed");
       return new Response(JSON.stringify({ error: result.errorMessage || "B2C request failed", raw: result }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
   } catch (e) {
     console.error("b2c error", e);
+    try {
+      const supabase2 = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { withdrawalId } = JSON.parse(bodyRaw || "{}");
+      if (withdrawalId) {
+        await supabase2.from("withdrawals").update({ status: "pending", b2c_result_desc: (e as Error).message }).eq("id", withdrawalId).eq("status", "processing");
+      }
+    } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: corsHeaders });
   }
 });

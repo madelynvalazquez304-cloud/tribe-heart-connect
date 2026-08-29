@@ -29,10 +29,40 @@ const CreatorWithdrawals = () => {
       if (!creator) return 0;
       const { data, error } = await supabase.rpc('get_creator_balance', { _creator_id: creator.id });
       if (error) throw error;
-      return data || 0;
+      return Number(data || 0);
     },
     enabled: !!creator
   });
+
+  // Available = completed balance minus funds already locked in open withdrawals
+  const { data: available } = useQuery({
+    queryKey: ['creator-available-balance', creator?.id],
+    queryFn: async () => {
+      if (!creator) return 0;
+      const { data, error } = await supabase.rpc('get_creator_available_balance', { _creator_id: creator.id });
+      if (error) throw error;
+      return Number(data || 0);
+    },
+    enabled: !!creator
+  });
+
+  const { data: wSettings } = useQuery({
+    queryKey: ['withdrawal-settings'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['withdrawal_min_amount', 'withdrawal_fee']);
+      const get = (k: string) => data?.find(d => d.key === k)?.value;
+      return {
+        min: Number(get('withdrawal_min_amount') ?? 500),
+        fee: Number(get('withdrawal_fee') ?? 50),
+      };
+    },
+  });
+
+  const minAmount = wSettings?.min ?? 500;
+  const fee = wSettings?.fee ?? 50;
 
   const { data: withdrawals, isLoading } = useQuery({
     queryKey: ['creator-withdrawals', creator?.id],
@@ -52,28 +82,25 @@ const CreatorWithdrawals = () => {
   const createWithdrawal = useMutation({
     mutationFn: async (amount: number) => {
       if (!creator) throw new Error('No creator');
-      const fee = 50; // Fixed fee
+      // All validation (balance, minimum, fee, approval flag) happens server-side
+      const { data: newId, error } = await supabase.rpc('request_withdrawal', {
+        _amount: amount,
+        _payment_details: {},
+      });
+      if (error) throw new Error(error.message.replace(/^.*?:\s*/, ''));
       const net = amount - fee;
-      const { data: row, error } = await supabase.from('withdrawals').insert({
-        creator_id: creator.id,
-        amount,
-        fee,
-        net_amount: net,
-        payment_method: 'mpesa'
-      }).select('id').maybeSingle();
-      if (error) throw error;
-      // Fire-and-forget confirmation email to the creator
       if (user?.email) {
         notify('withdrawal_requested', user.email, {
           recipient_name: creator.display_name || creator.username,
           amount: net.toLocaleString(),
           currency: 'KES',
-          receipt: row?.id?.slice(0, 8).toUpperCase() || 'PENDING',
+          receipt: String(newId || '').slice(0, 8).toUpperCase() || 'PENDING',
         });
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['creator-withdrawals'] });
+      queryClient.invalidateQueries({ queryKey: ['creator-available-balance'] });
       toast.success('Withdrawal request submitted');
       setIsOpen(false);
       setAmount('');
@@ -84,13 +111,21 @@ const CreatorWithdrawals = () => {
   });
 
   const handleSubmit = () => {
-    const amountNum = parseInt(amount);
-    if (amountNum < 500) {
-      toast.error('Minimum withdrawal is KSh 500');
+    const amountNum = parseInt(amount, 10);
+    if (!amountNum || amountNum <= 0) {
+      toast.error('Enter a valid amount');
       return;
     }
-    if (amountNum > (balance || 0)) {
-      toast.error('Insufficient balance');
+    if (amountNum < minAmount) {
+      toast.error(`Minimum withdrawal is KSh ${minAmount.toLocaleString()}`);
+      return;
+    }
+    if (amountNum > (available || 0)) {
+      toast.error('Insufficient available balance');
+      return;
+    }
+    if (!creator?.mpesa_phone) {
+      toast.error('Add your M-PESA phone number in settings first');
       return;
     }
     createWithdrawal.mutate(amountNum);
@@ -119,9 +154,12 @@ const CreatorWithdrawals = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-green-50 text-center">
-                  <p className="text-sm text-muted-foreground">Available Balance</p>
-                  <p className="text-2xl font-bold text-green-600">KSh {Number(balance || 0).toLocaleString()}</p>
+                <div className="p-4 rounded-lg bg-muted text-center">
+                  <p className="text-sm text-muted-foreground">Available to withdraw</p>
+                  <p className="text-2xl font-bold text-primary">KSh {Number(available || 0).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Earned: KSh {Number(balance || 0).toLocaleString()} · Locked in open requests: KSh {Math.max(Number(balance || 0) - Number(available || 0), 0).toLocaleString()}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Amount (KSh)</Label>
@@ -129,9 +167,12 @@ const CreatorWithdrawals = () => {
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder="Min 500"
+                    placeholder={`Min ${minAmount}`}
                   />
-                  <p className="text-xs text-muted-foreground">Fee: KSh 50</p>
+                  <p className="text-xs text-muted-foreground">
+                    Fee: KSh {fee.toLocaleString()}
+                    {parseInt(amount || '0', 10) > fee && ` · You receive KSh ${(parseInt(amount, 10) - fee).toLocaleString()}`}
+                  </p>
                 </div>
               </div>
               <DialogFooter>
@@ -153,7 +194,10 @@ const CreatorWithdrawals = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-green-600">KSh {Number(balance || 0).toLocaleString()}</p>
+            <p className="text-3xl font-bold text-primary">KSh {Number(available || 0).toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Total earned KSh {Number(balance || 0).toLocaleString()} — pending payout requests are held back to prevent overdrafts.
+            </p>
           </CardContent>
         </Card>
 
@@ -190,9 +234,14 @@ const CreatorWithdrawals = () => {
                       <TableCell className="font-semibold">KSh {Number(w.net_amount).toLocaleString()}</TableCell>
                       <TableCell>{format(new Date(w.created_at), 'MMM d, yyyy')}</TableCell>
                       <TableCell>
-                        <Badge variant={w.status === 'completed' ? 'default' : w.status === 'rejected' ? 'destructive' : 'outline'}>
-                          {w.status}
-                        </Badge>
+                        <div className="flex flex-col gap-1 items-start">
+                          <Badge variant={w.status === 'completed' ? 'default' : w.status === 'rejected' ? 'destructive' : 'outline'}>
+                            {w.status}
+                          </Badge>
+                          {(w as any).requires_review && w.status === 'pending' && (
+                            <span className="text-xs text-amber-600">awaiting admin approval</span>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
