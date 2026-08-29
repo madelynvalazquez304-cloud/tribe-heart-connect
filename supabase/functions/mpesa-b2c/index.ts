@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
     const revert = async (desc?: string) => {
       await supabase.from("withdrawals").update({
-        status: "pending",
+        status: withdrawal.status,
         ...(desc ? { b2c_result_desc: desc } : {}),
       }).eq("id", withdrawalId);
     };
