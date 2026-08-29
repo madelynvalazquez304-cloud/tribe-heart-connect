@@ -2125,7 +2125,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_withdrawal_for_payout: {
+        Args: { _admin_id: string; _withdrawal_id: string }
+        Returns: Json
+      }
       generate_unique_referral_code: { Args: never; Returns: string }
+      get_creator_available_balance: {
+        Args: { _creator_id: string }
+        Returns: number
+      }
       get_creator_balance: { Args: { _creator_id: string }; Returns: number }
       get_creator_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
@@ -2138,6 +2146,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_creator: { Args: { _user_id: string }; Returns: boolean }
       release_brand_deal: { Args: { _deal_id: string }; Returns: undefined }
+      request_withdrawal: {
+        Args: { _amount: number; _payment_details?: Json }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "creator" | "user"
